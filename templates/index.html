@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>SV</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+  <body>
+    <iframe name="hiddenFrame" width="0" height="0" border="0" style="display: none;"></iframe>
+    <form action="/r" method="get" target="hiddenFrame">
+        {{ range . }}
+        <input style="font-size: 20px;" type="submit" name="s" value="{{.Service}}" />
+        {{ end }}
+    </form>
+  </body>
+</html>

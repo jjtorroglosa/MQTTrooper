@@ -1,0 +1,7 @@
+services:
+  dev:
+    image: "golang:1.23.1-bookworm"
+    command: sleep infinity
+    working_dir: /src
+    volumes:
+      - "./:/src"
