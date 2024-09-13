@@ -7,7 +7,6 @@ import (
 	"net/http"
 )
 
-
 func main() {
 	var dryRun = flag.Bool("d", false, "Don't run the commands. For testing purposes")
 	var port = flag.Int("p", 8080, "Port to listen for HTTP requests")

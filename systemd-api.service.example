@@ -3,10 +3,7 @@ Description=http api to restart systemd services
 After=snapserver.service
 [Service]
 WorkingDirectory=/home/jtorr/services/systemd-api
-# Shutdown container (if running) when unit is started
 ExecStart=/home/jtorr/services/systemd-api/systemd-api -b 172.17.0.1 -p 8888
-# Stop container when unit is stopped
-#ExecStop=
 RestartSec=5
 Restart=always
 [Install]

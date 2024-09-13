@@ -1,13 +1,12 @@
 package main
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
 	"html"
 	"html/template"
 	"log"
 	"net/http"
-	"os/exec"
 	"strings"
 )
 
@@ -32,61 +31,33 @@ func Home(w http.ResponseWriter, r *http.Request) {
 	if err2 != nil {
 		fmt.Println(err2)
 	}
-
 }
 
-var services = map[string]string{
-	"snapserver": "sudo systemctl restart snapserver.service",
-	"snapclient": "systemctl --user restart snapclient.service",
-	"spotifyd":   "systemctl --user restart spotifyd.service",
-}
-
-const shell = "/usr/bin/bash"
-
-func execute(dryRun bool, cmd string) (string, string, error) {
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	log.Printf("$ %s %s %s", shell, "-c", cmd)
-	if !dryRun {
-		cmd := exec.Command(shell, "-c", cmd)
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-		err := cmd.Run()
-		return stdout.String(), stderr.String(), err
-	}
-
-	return "", "", nil
-}
-
-func restart(dryRun bool, allowAdress string, w http.ResponseWriter, r *http.Request) {
+func restart(dryRun bool, allowAdress string, w http.ResponseWriter, r *http.Request) error {
 	log.Printf("[GET] %s %s\n", r.RemoteAddr, r.URL)
 	log.Printf("[GET] %s %s\n", r.Header, r.URL)
 	if strings.Split(r.RemoteAddr, ":")[0] != allowAdress {
 		log.Println("Unauthorized")
-		return
+		return errors.New("Unauthorized")
 	}
 	service := html.EscapeString(r.URL.Query().Get("s"))
-	cmd, ok := services[service]
-	if !ok {
-		log.Println("Unknown service")
-		return
-	}
 
-	out, errout, err := execute(dryRun, cmd)
+	out, errout, err := execute(dryRun, service)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
+        return err
 	}
-	fmt.Fprintf(w, "{\"result\": \"ok\"}\n")
 	if out != "" {
 		log.Print(out)
 	}
 	if errout != "" {
 		log.Print(errout)
 	}
+	fmt.Fprintf(w, "{\"result\": \"ok\"}\n")
+    return nil
 }
 
 func CreateRestartHandler(dryRun bool, allowAddress string) func(http.ResponseWriter, *http.Request) {
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		restart(dryRun, allowAddress, w, r)
 	}
