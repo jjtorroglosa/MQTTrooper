@@ -37,15 +37,16 @@ func restart(dryRun bool, allowAdress string, w http.ResponseWriter, r *http.Req
 	log.Printf("[GET] %s %s\n", r.RemoteAddr, r.URL)
 	log.Printf("[GET] %s %s\n", r.Header, r.URL)
 	if strings.Split(r.RemoteAddr, ":")[0] != allowAdress {
-		log.Println("Unauthorized")
-		return errors.New("Unauthorized")
+		unauthorized := "Unauthorized"
+		log.Println(unauthorized)
+		return errors.New(unauthorized)
 	}
 	service := html.EscapeString(r.URL.Query().Get("s"))
 
 	out, errout, err := execute(dryRun, service)
 	if err != nil {
 		log.Println(err)
-        return err
+		return err
 	}
 	if out != "" {
 		log.Print(out)
@@ -54,7 +55,8 @@ func restart(dryRun bool, allowAdress string, w http.ResponseWriter, r *http.Req
 		log.Print(errout)
 	}
 	fmt.Fprintf(w, "{\"result\": \"ok\"}\n")
-    return nil
+
+	return nil
 }
 
 func CreateRestartHandler(dryRun bool, allowAddress string) func(http.ResponseWriter, *http.Request) {

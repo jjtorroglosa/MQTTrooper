@@ -7,6 +7,15 @@ import (
 	"net/http"
 )
 
+func listenHttp(address string, allow string, dryRun bool, port int) {
+	http.HandleFunc("/", Home)
+	http.HandleFunc("/r", CreateRestartHandler(dryRun, allow))
+
+	bindAddress := fmt.Sprintf("%s:%d", address, port)
+	log.Printf("Listening on http://%s\n", bindAddress)
+	log.Fatal(http.ListenAndServe(bindAddress, nil))
+}
+
 func main() {
 	var dryRun = flag.Bool("d", false, "Don't run the commands. For testing purposes")
 	var port = flag.Int("p", 8080, "Port to listen for HTTP requests")
@@ -23,10 +32,5 @@ func main() {
 		fmt.Println("** Dry run mode **")
 	}
 
-	http.HandleFunc("/", Home)
-	http.HandleFunc("/r", CreateRestartHandler(*dryRun, *allow))
-
-	bind := fmt.Sprintf("%s:%d", *address, *port)
-	log.Printf("Listening on http://%s\n", bind)
-	log.Fatal(http.ListenAndServe(bind, nil))
+	listenHttp(*address, *allow, *dryRun, *port)
 }
