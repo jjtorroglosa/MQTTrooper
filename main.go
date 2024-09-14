@@ -8,8 +8,9 @@ import (
 )
 
 func listenHttp(address string, allow string, dryRun bool, port int) {
+	cfg := load("config.yaml")
 	http.HandleFunc("/", Home)
-	http.HandleFunc("/r", CreateRestartHandler(dryRun, allow))
+	http.HandleFunc("/r", CreateRestartHandler(dryRun, allow, cfg.Services, cfg.Executor.Shell))
 
 	bindAddress := fmt.Sprintf("%s:%d", address, port)
 	log.Printf("Listening on http://%s\n", bindAddress)

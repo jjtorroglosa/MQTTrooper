@@ -7,29 +7,31 @@ import (
 	"os/exec"
 )
 
-var services = map[string]string{
-	"snapserver": "sudo systemctl restart snapserver.service",
-	"snapclient": "systemctl --user restart snapclient.service",
-	"spotifyd":   "systemctl --user restart spotifyd.service",
-}
+const shell = "/bin/bash"
 
-const shell = "/usr/bin/bash"
-
-func execute(dryRun bool, service string) (string, string, error) {
+func execute(
+	dryRun bool,
+	service string,
+	args string,
+	services map[string]string,
+	shell string,
+) (string, error) {
 	cmd, ok := services[service]
 	if !ok {
-		return "","", errors.New("Unknown service")
+		return "", errors.New("Unknown service")
 	}
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	log.Printf("$ %s %s %s", shell, "-c", cmd)
+	var output bytes.Buffer
+	log.Printf("$ %s %s %s", shell, "-c", cmd + " " + args)
 	if !dryRun {
-		cmd := exec.Command(shell, "-c", cmd)
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
+		cmd := exec.Command(shell, "-c", cmd + " " + args)
+		cmd.Stdout = &output
+		cmd.Stderr = &output
 		err := cmd.Run()
-		return stdout.String(), stderr.String(), err
+		log.Println("  ------ output ------")
+		log.Println(output.String())
+		log.Println("  --------------------")
+		return "", err
 	}
 
-	return "", "", nil
+	return "", nil
 }

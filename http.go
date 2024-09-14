@@ -21,7 +21,7 @@ var links = []Link{
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("templates/index.html")
+	tmpl, err := template.ParseFiles("templates/index.html.tmpl")
 	if err != nil {
 		fmt.Println("Error reading the template")
 		fmt.Println(err)
@@ -33,7 +33,14 @@ func Home(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func restart(dryRun bool, allowAdress string, w http.ResponseWriter, r *http.Request) error {
+func restart(
+	dryRun bool,
+	allowAdress string,
+	services map[string]string,
+	shell string,
+	w http.ResponseWriter,
+	r *http.Request,
+) error {
 	log.Printf("[GET] %s %s\n", r.RemoteAddr, r.URL)
 	log.Printf("[GET] %s %s\n", r.Header, r.URL)
 	if strings.Split(r.RemoteAddr, ":")[0] != allowAdress {
@@ -43,7 +50,7 @@ func restart(dryRun bool, allowAdress string, w http.ResponseWriter, r *http.Req
 	}
 	service := html.EscapeString(r.URL.Query().Get("s"))
 
-	out, errout, err := execute(dryRun, service)
+	out, err := execute(dryRun, service, "", services, shell)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -51,16 +58,18 @@ func restart(dryRun bool, allowAdress string, w http.ResponseWriter, r *http.Req
 	if out != "" {
 		log.Print(out)
 	}
-	if errout != "" {
-		log.Print(errout)
-	}
 	fmt.Fprintf(w, "{\"result\": \"ok\"}\n")
 
 	return nil
 }
 
-func CreateRestartHandler(dryRun bool, allowAddress string) func(http.ResponseWriter, *http.Request) {
+func CreateRestartHandler(
+	dryRun bool,
+	allowAddress string,
+	services map[string]string,
+	shell string,
+) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		restart(dryRun, allowAddress, w, r)
+		restart(dryRun, allowAddress, services, shell, w, r)
 	}
 }
