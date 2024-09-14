@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -21,6 +22,10 @@ type Config struct {
 	Services map[string]string
 	Mqtt     MqttConfig
 	Executor ExecutorConfig
+}
+
+func GetFlag() *string {
+	return flag.String("c", "config.yaml", "The path to the config.yaml file")
 }
 
 func openFile(file string) (string, error) {

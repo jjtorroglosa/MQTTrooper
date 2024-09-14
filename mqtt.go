@@ -62,7 +62,10 @@ func parseAndValidateFloat(input string) (bool, float32) {
 }
 
 func main() {
-	cfg := load("config.yaml")
+	configFile := GetFlag()
+	flag.Parse()
+
+	cfg := load(*configFile)
 	log.Printf("Available services:")
 	for k, v := range cfg.Services {
 		log.Printf("  %s => %s\n", k, v)
@@ -92,7 +95,7 @@ func main() {
 			// TODO right now it only accepts floats as argument
 			cmd, args = payload[0], payload[1]
 			if isFloat, _ := parseAndValidateFloat(args); !isFloat {
-                log.Printf("Ignoring cmd as the argument is not a float")
+				log.Printf("Ignoring cmd as the argument is not a float")
 				continue
 			}
 		} else {
