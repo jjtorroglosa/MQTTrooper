@@ -5,10 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-func listenHttp(configFile string, address string, allow string, dryRun bool, port int) {
-	cfg := load(configFile)
+func listenHttp(cfg Config, address string, allow string, dryRun bool, port int) {
 	http.HandleFunc("/", Home)
 	http.HandleFunc("/r", CreateRestartHandler(dryRun, allow, cfg.Services, cfg.Executor.Shell))
 
@@ -28,12 +32,32 @@ func main() {
 	flag.Parse()
 
 	fmt.Println("-------------------------------------------------")
-	fmt.Println("                 systemd-api                     ")
+	fmt.Println("                 mqtt-commander                  ")
 	fmt.Println("-------------------------------------------------")
 
 	if *dryRun {
 		fmt.Println("** Dry run mode **")
 	}
 
-	listenHttp(*configFile, *address, *allow, *dryRun, *port)
+	cfg := load(*configFile)
+
+	if cfg.Http.Enabled {
+		go listenHttp(cfg, *address, *allow, *dryRun, *port)
+	}
+	var mqttClient mqtt.Client = nil
+	if cfg.Mqtt.Enabled {
+		mqttClient = listenMqtt(cfg, *dryRun)
+	}
+
+	sigtermChan := make(chan os.Signal, 1)
+	signal.Notify(sigtermChan, os.Interrupt, syscall.SIGTERM)
+
+	<-sigtermChan
+	log.Println("SIGTERM received. Exiting...")
+	if mqttClient != nil {
+		mqttClient.Disconnect(250)
+	}
+	log.Println("Client Disconnected")
+	os.Exit(1)
+
 }

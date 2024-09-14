@@ -1,4 +1,4 @@
-module systemd-api
+module mqtt-commander
 
 go 1.23.1
 

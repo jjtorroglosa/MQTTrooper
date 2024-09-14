@@ -4,10 +4,8 @@ import (
 	"flag"
 	"log"
 	"os"
-	"os/signal"
 	"strconv"
 	"strings"
-	"syscall"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
@@ -40,7 +38,7 @@ func connect(address string, user string, password string, topic string) (MQTT.C
 		log.Println(token.Error())
 		os.Exit(1)
 	}
-	log.Printf("Connected to %s\n", address)
+	log.Printf("Connected to broker %s\n", address)
 	log.Printf("Listening topic: %s\n", topic)
 	return client, choke
 }
@@ -61,29 +59,7 @@ func parseAndValidateFloat(input string) (bool, float32) {
 	return true, f32
 }
 
-func main() {
-	configFile := GetFlag()
-	flag.Parse()
-
-	cfg := load(*configFile)
-	log.Printf("Available services:")
-	for k, v := range cfg.Services {
-		log.Printf("  %s => %s\n", k, v)
-	}
-
-	client, choke := connect(cfg.Mqtt.Address, cfg.Mqtt.User, cfg.Mqtt.Pass, cfg.Mqtt.Topic)
-
-	sigtermChan := make(chan os.Signal)
-	signal.Notify(sigtermChan, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-sigtermChan
-		log.Println("SIGTERM received")
-		log.Println("Exiting...")
-		client.Disconnect(250)
-		log.Println("Client Disconnected")
-		os.Exit(1)
-	}()
-
+func mqttLoop(dryRun bool, cfg Config, choke chan[2] string) {
 	for {
 		incoming := <-choke
 		topic, payload := incoming[0], strings.Split(incoming[1], ":")
@@ -103,6 +79,22 @@ func main() {
 			cmd, args = "", ""
 		}
 		log.Printf("Cmd: %s Args: %s\n", cmd, args)
-		execute(false, cmd, args, cfg.Services, cfg.Executor.Shell)
+		go execute(dryRun, cmd, args, cfg.Services, cfg.Executor.Shell)
 	}
+}
+
+func listenMqtt(cfg Config, dryRun bool) MQTT.Client {
+	// dryRun := flag.Bool("d", false, "Dry run mode")
+
+	// cfg := load(*configFile)
+	log.Printf("Available services:")
+	for k, v := range cfg.Services {
+		log.Printf("  %s => %s\n", k, v)
+	}
+
+	client, choke := connect(cfg.Mqtt.Address, cfg.Mqtt.User, cfg.Mqtt.Pass, cfg.Mqtt.Topic)
+
+	log.Printf("Listening messages in topic %s", cfg.Mqtt.Topic)
+	go mqttLoop(dryRun, cfg, choke)
+	return client
 }

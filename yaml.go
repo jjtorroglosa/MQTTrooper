@@ -9,7 +9,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type HttpConfig struct {
+	Enabled bool
+}
 type MqttConfig struct {
+	Enabled bool
 	Address string
 	User    string
 	Pass    string
@@ -22,6 +26,7 @@ type Config struct {
 	Services map[string]string
 	Mqtt     MqttConfig
 	Executor ExecutorConfig
+	Http     HttpConfig
 }
 
 func GetFlag() *string {
@@ -47,6 +52,6 @@ func load(file string) Config {
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
-	fmt.Println("-- Result --")
+	log.Printf("Config file loaded: %s\n", file)
 	return cfg
 }
