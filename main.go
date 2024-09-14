@@ -7,8 +7,8 @@ import (
 	"net/http"
 )
 
-func listenHttp(address string, allow string, dryRun bool, port int) {
-	cfg := load("config.yaml")
+func listenHttp(configFile string, address string, allow string, dryRun bool, port int) {
+	cfg := load(configFile)
 	http.HandleFunc("/", Home)
 	http.HandleFunc("/r", CreateRestartHandler(dryRun, allow, cfg.Services, cfg.Executor.Shell))
 
@@ -23,6 +23,8 @@ func main() {
 	var address = flag.String("b", "127.0.0.1", "Address to bind to")
 	var allow = flag.String("allow", "127.0.0.1", "Address to allow requests from")
 
+	var configFile = GetFlag()
+
 	flag.Parse()
 
 	fmt.Println("-------------------------------------------------")
@@ -33,5 +35,5 @@ func main() {
 		fmt.Println("** Dry run mode **")
 	}
 
-	listenHttp(*address, *allow, *dryRun, *port)
+	listenHttp(*configFile, *address, *allow, *dryRun, *port)
 }
