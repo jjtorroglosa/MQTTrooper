@@ -1,0 +1,12 @@
+executor:
+  shell: /bin/bash
+services:
+  snapserver: "sudo systemctl restart snapserver.service"
+  snapclient: "systemctl --user restart snapclient.service"
+  spotifyd:   "systemctl --user restart spotifyd.service"
+  date: "ls && asdf"
+mqtt:
+  user: yourmqttuser
+  pass: yourmqttpass
+  address: tcp://address:port
+  topic: /topleveltopic/host

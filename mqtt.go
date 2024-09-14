@@ -2,25 +2,23 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
 
-func connect() (MQTT.Client, chan [2]string) {
-	broker := "tcp://bell.home:1883"
-	user := "systemd-api"
-	password := "pRoNIRJ5u2f4gb4mFcoBlufkLOttT1Yo"
-	topic := "/systemd-api/b"
+func connect(address string, user string, password string, topic string) (MQTT.Client, chan [2]string) {
 	cleansess := flag.Bool("clean", false, "Set Clean Session (default false)")
 	qos := flag.Int("qos", 0, "The Quality of Service 0,1,2 (default 0)")
 	flag.Parse()
 
 	opts := MQTT.NewClientOptions()
-	opts.AddBroker(broker)
+	opts.AddBroker(address)
 	opts.SetClientID(user)
 	opts.SetUsername(user)
 	opts.SetPassword(password)
@@ -39,30 +37,68 @@ func connect() (MQTT.Client, chan [2]string) {
 	}
 
 	if token := client.Subscribe(topic, byte(*qos), nil); token.Wait() && token.Error() != nil {
-		fmt.Println(token.Error())
+		log.Println(token.Error())
 		os.Exit(1)
 	}
-	fmt.Printf("Connected to %s\n", broker)
-	fmt.Printf("Listening topic: %s\n", topic)
+	log.Printf("Connected to %s\n", address)
+	log.Printf("Listening topic: %s\n", topic)
 	return client, choke
 }
 
-func main() {
-	client, choke := connect()
+func parseAndValidateFloat(input string) (bool, float32) {
+	f64, err := strconv.ParseFloat(input, 32)
+	if err != nil {
+		log.Println("   That wasn't a float ¬_¬\n> " + input)
+		return false, .0
+	}
+	f32 := float32(f64)
 
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	if f32 > 0.5 || f32 < 0 {
+		log.Println("  That float wasn't great :)\n> " + input)
+		return false, .0
+	}
+
+	return true, f32
+}
+
+func main() {
+	cfg := load("config.yaml")
+	log.Printf("Available services:")
+	for k, v := range cfg.Services {
+		log.Printf("  %s => %s\n", k, v)
+	}
+
+	client, choke := connect(cfg.Mqtt.Address, cfg.Mqtt.User, cfg.Mqtt.Pass, cfg.Mqtt.Topic)
+
+	sigtermChan := make(chan os.Signal)
+	signal.Notify(sigtermChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		<-c
-		fmt.Println("Exiting...")
+		<-sigtermChan
+		log.Println("SIGTERM received")
+		log.Println("Exiting...")
 		client.Disconnect(250)
-		fmt.Println("Client Disconnected")
+		log.Println("Client Disconnected")
 		os.Exit(1)
 	}()
 
 	for {
 		incoming := <-choke
-		fmt.Printf("Received in %s -> %s\n", incoming[0], incoming[1])
-		execute(true, incoming[1])
+		topic, payload := incoming[0], strings.Split(incoming[1], ":")
+		log.Printf("Received in %s -> %s\n", topic, payload)
+		var cmd, args string
+		if len(payload) == 1 {
+			cmd, args = payload[0], ""
+		} else if len(payload) == 2 {
+			// TODO right now it only accepts floats as argument
+			cmd, args = payload[0], payload[1]
+			if isFloat, _ := parseAndValidateFloat(args); !isFloat {
+                log.Printf("Ignoring cmd as the argument is not a float")
+				continue
+			}
+		} else {
+			cmd, args = "", ""
+		}
+		log.Printf("Cmd: %s Args: %s\n", cmd, args)
+		execute(false, cmd, args, cfg.Services, cfg.Executor.Shell)
 	}
 }
