@@ -21,9 +21,9 @@ func execute(
 		return "", errors.New("Unknown service")
 	}
 	var output bytes.Buffer
-	log.Printf("$ %s %s %s", shell, "-c", cmd + " " + args)
+	log.Printf("$ %s %s %s", shell, "-c", cmd+" "+args)
 	if !dryRun {
-		cmd := exec.Command(shell, "-c", cmd + " " + args)
+		cmd := exec.Command(shell, "-c", cmd+" "+args)
 		cmd.Stdout = &output
 		cmd.Stderr = &output
 		err := cmd.Run()
