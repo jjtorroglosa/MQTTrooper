@@ -97,6 +97,7 @@ func main() {
 			}
 		} else {
 			cmd, args = "", ""
+			cmd, args = "", ""
 		}
 		log.Printf("Cmd: %s Args: %s\n", cmd, args)
 		execute(false, cmd, args, cfg.Services, cfg.Executor.Shell)

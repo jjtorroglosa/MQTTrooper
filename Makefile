@@ -1,29 +1,37 @@
 
 .PHONY: deploy http mqtt mac
 
-mac: dist/http.mac dist/mqtt.mac
+mac: dist dist/http.amd64.darwin dist/mqtt.amd64.darwin
+linux: dist dist/http.amd64.linux dist/mqtt.amd64.linux
 
-http: dist/http.linux dist/http.mac
-mqtt: dist/mqtt.mac dist/mqtt.linux
+all: mac linux
 
-dist/mqtt.mac: *.go
+http: dist dist/http.amd64.linux dist/http.amd64.darwin
+mqtt: dist dist/mqtt.amd64.linux dist/mqtt.amd64.darwin
+
+#LINUX = docker compose run --rm dev go
+LINUX = GOARCH=amd64 GOOS=linux go
+MAC = GOARCH=amd64 GOOS=darwin go
+HTTP_FILES = main.go http.go yaml.go cmd.go
+MQTT_FILES = mqtt.go cmd.go yaml.go
+
+dist/mqtt.amd64.darwin: $(MQTT_FILES)
+	$(MAC) build -o $@ $^
+
+dist/mqtt.amd64.linux:$(MQTT_FILES)
+	$(LINUX) build -o $@ $^
+
+dist/http.amd64.darwin: $(HTTP_FILES)
+	$(MAC) build -o $@ $^
+
+dist/http.amd64.linux: $(HTTP_FILES)
+	$(LINUX) build -o $@ $^
+
+dist:
 	mkdir -p dist
-	go build -o dist/mqtt.mac mqtt.go cmd.go yaml.go
 
-dist/mqtt.linux: *.go
-	mkdir -p dist
-	docker compose run --rm dev go build -o dist/mqtt.linux mqtt.go cmd.go yaml.go
-
-dist/http.mac: *.go
-	mkdir -p dist
-	go build -o dist/http.mac main.go http.go yaml.go cmd.go
-
-dist/http.linux: *.go
-	mkdir -p dist
-	docker compose run --rm dev go build -o dist/http.linux main.go http.go yaml.go cmd.go
-
-systemd-api: *.go
-	docker compose run --rm dev go build -o build/systemd-api *.go
+clean:
+	rm -rf dist
 
 deploy:
 	rsync -avz ./ bell:services/systemd-api/
