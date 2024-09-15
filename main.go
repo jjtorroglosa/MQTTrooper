@@ -12,20 +12,38 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-func listenHttp(cfg Config, address string, allow string, dryRun bool, port int) {
-	http.HandleFunc("/", Home)
-	http.HandleFunc("/r", CreateRestartHandler(dryRun, allow, cfg.Services, cfg.Executor.Shell))
+func listenHttp(bindAddress string, port int, allowedAddress string, execute Executor) {
+	http.HandleFunc("/", HomeHandler)
+	http.HandleFunc("/r", func(w http.ResponseWriter, r *http.Request) {
+		ExecuteHandler(execute, allowedAddress, w, r)
+	})
 
-	bindAddress := fmt.Sprintf("%s:%d", address, port)
-	log.Printf("Listening on http://%s\n", bindAddress)
-	log.Fatal(http.ListenAndServe(bindAddress, nil))
+	addressPort := fmt.Sprintf("%s:%d", bindAddress, port)
+	log.Printf("Listening on http://%s\n", addressPort)
+	log.Fatal(http.ListenAndServe(addressPort, nil))
+}
+
+func handleSigterm(client mqtt.Client) {
+	sigtermChan := make(chan os.Signal, 1)
+	signal.Notify(sigtermChan, os.Interrupt, syscall.SIGTERM)
+
+	<-sigtermChan
+	log.Println("SIGTERM received. Exiting...")
+	if client != nil {
+		client.Disconnect(250)
+	}
+	log.Println("Client Disconnected")
+	os.Exit(1)
 }
 
 func main() {
 	var dryRun = flag.Bool("d", false, "Don't run the commands. For testing purposes")
 	var port = flag.Int("p", 8080, "Port to listen for HTTP requests")
 	var address = flag.String("b", "127.0.0.1", "Address to bind to")
-	var allow = flag.String("allow", "127.0.0.1", "Address to allow requests from")
+	var allowedAddress = flag.String("allow", "127.0.0.1", "Address to allow requests from")
+	var pub = flag.Bool("publish", false, "Use this flag to publish messages to the topic instead of subscribing to it")
+	var payload = flag.String("message", "", "The message to publish")
+	var user = flag.String("user", "", "The message to publish")
 
 	var configFile = GetFlag()
 
@@ -40,24 +58,28 @@ func main() {
 	}
 
 	cfg := load(*configFile)
+	if *user != "" {
+		cfg.Mqtt.User = *user
+		cfg.Executor.DryRun = *dryRun
+	}
+	client := connect(cfg.Mqtt.Address, cfg.Mqtt.User, cfg.Mqtt.Pass)
+
+	if *pub == true {
+		if *payload == "" {
+			log.Fatalln("Empty payload. You need to provide a valid payload to publish")
+		}
+
+		publish(client, *payload, cfg.Mqtt.Topic)
+		os.Exit(0)
+	}
+	execute := CreateExecutor(cfg.Executor.DryRun, cfg.Executor.Shell, cfg.Services)
 
 	if cfg.Http.Enabled {
-		go listenHttp(cfg, *address, *allow, *dryRun, *port)
+		go listenHttp(*address, *port, *allowedAddress, execute)
 	}
-	var mqttClient mqtt.Client = nil
 	if cfg.Mqtt.Enabled {
-		mqttClient = listenMqtt(cfg, *dryRun)
+		Subscribe(client, cfg.Mqtt.Topic, *dryRun, execute)
 	}
 
-	sigtermChan := make(chan os.Signal, 1)
-	signal.Notify(sigtermChan, os.Interrupt, syscall.SIGTERM)
-
-	<-sigtermChan
-	log.Println("SIGTERM received. Exiting...")
-	if mqttClient != nil {
-		mqttClient.Disconnect(250)
-	}
-	log.Println("Client Disconnected")
-	os.Exit(1)
-
+	handleSigterm(client)
 }

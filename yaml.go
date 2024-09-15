@@ -10,7 +10,8 @@ import (
 )
 
 type HttpConfig struct {
-	Enabled bool
+	Enabled      bool
+	AllowAddress string
 }
 type MqttConfig struct {
 	Enabled bool
@@ -20,10 +21,12 @@ type MqttConfig struct {
 	Topic   string
 }
 type ExecutorConfig struct {
-	Shell string
+	Shell  string
+	DryRun bool
 }
+type ServicesMap map[string]string
 type Config struct {
-	Services map[string]string
+	Services ServicesMap
 	Mqtt     MqttConfig
 	Executor ExecutorConfig
 	Http     HttpConfig
