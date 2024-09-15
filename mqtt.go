@@ -88,7 +88,7 @@ func Subscribe(client mqtt.Client, topic string, dryRun bool, handler func(strin
 			incoming := <-choke
 			topic, payload := incoming[0], incoming[1]
 			log.Printf("Received in %s -> %s\n", topic, payload)
-			handler(payload)
+			go handler(payload)
 		}
 	}()
 

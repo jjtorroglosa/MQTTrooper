@@ -2,8 +2,8 @@
 Description=Daemon to subscribe to a mqtt topic and spawn commands
 After=snapserver.service
 [Service]
-WorkingDirectory=/home/jtorr/services/mqtt-commander
-ExecStart=/home/jtorr/services/mqtt-commander/mqtt-commander -b 172.17.0.1 -p 8888
+WorkingDirectory=/home/jtorr/services/mqttrooper
+ExecStart=/home/jtorr/services/mqttrooper/mqttrooper -b 172.17.0.1 -p 8888
 RestartSec=5
 Restart=always
 [Install]

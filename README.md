@@ -1,6 +1,6 @@
 # MQTTrooper
 
 ## Install service
-sudo ln -s $HOME/services/mqtt-commander/mqtt-commander.service /etc/systemd/user/mqtt-commander.service
+sudo ln -s $HOME/services/mqttrooper/mqttrooper.service /etc/systemd/user/mqttrooper.service
 
 ## Add services to sudoers
