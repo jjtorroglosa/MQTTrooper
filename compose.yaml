@@ -5,3 +5,12 @@ services:
     working_dir: /src
     volumes:
       - "./:/src"
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    restart: unless-stopped
+    volumes:
+      - "./mosquitto-data:/mosquitto"
+    ports:
+      - "127.0.0.1:1883:1883"
+        #- "9001:9001"
+    command: "mosquitto -c /mosquitto-no-auth.conf -v"
