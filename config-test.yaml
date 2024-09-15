@@ -20,4 +20,4 @@ mqtt:
   user: whatever
   pass: whatever
   address: tcp://127.0.0.1:1883
-  topic: /mqtt-listener/b
+  topic: /mqttrooper/b

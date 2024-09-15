@@ -50,7 +50,7 @@ func main() {
 	flag.Parse()
 
 	fmt.Println("-------------------------------------------------")
-	fmt.Println("                 mqtt-commander                  ")
+	fmt.Println("                    MQTTrooper                   ")
 	fmt.Println("-------------------------------------------------")
 
 	if *dryRun {

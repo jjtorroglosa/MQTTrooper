@@ -1,4 +1,4 @@
-module mqtt-commander
+module mqttrooper
 
 go 1.23.1
 
