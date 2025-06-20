@@ -43,7 +43,8 @@ func main() {
 	var allowedAddress = flag.String("allow", "127.0.0.1", "Address to allow requests from")
 	var pub = flag.Bool("publish", false, "Use this flag to publish messages to the topic instead of subscribing to it")
 	var payload = flag.String("message", "", "The message to publish")
-	var user = flag.String("user", "", "The message to publish")
+	var user = flag.String("user", "", "Mqtt user")
+	var password = flag.String("password", "", "Mqtt password")
 
 	var configFile = GetFlag()
 
@@ -58,11 +59,20 @@ func main() {
 	}
 
 	cfg := load(*configFile)
+	cfg.Executor.DryRun = *dryRun
 	if *user != "" {
 		cfg.Mqtt.User = *user
-		cfg.Executor.DryRun = *dryRun
 	}
-	client := connect(cfg.Mqtt.Address, cfg.Mqtt.User, cfg.Mqtt.Pass)
+	if *password != "" {
+		cfg.Mqtt.Pass = *password
+	}
+
+	execute := CreateExecutor(cfg.Executor.DryRun, cfg.Executor.Shell, cfg.Services)
+
+	var client mqtt.Client
+	if cfg.Mqtt.Enabled {
+		client = connect(cfg.Mqtt.Address, cfg.Mqtt.User, cfg.Mqtt.Pass, cfg.Mqtt.Topic, execute)
+	}
 
 	if *pub == true {
 		if *payload == "" {
@@ -72,13 +82,9 @@ func main() {
 		publish(client, *payload, cfg.Mqtt.Topic)
 		os.Exit(0)
 	}
-	execute := CreateExecutor(cfg.Executor.DryRun, cfg.Executor.Shell, cfg.Services)
 
 	if cfg.Http.Enabled {
 		go listenHttp(*address, *port, *allowedAddress, execute)
-	}
-	if cfg.Mqtt.Enabled {
-		Subscribe(client, cfg.Mqtt.Topic, *dryRun, execute)
 	}
 
 	handleSigterm(client)

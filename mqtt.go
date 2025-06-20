@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
@@ -12,23 +13,13 @@ import (
 const qos = 0
 const cleansess = false
 
-func subscribe(
-	client mqtt.Client,
-	topic string,
-) chan [2]string {
-	choke := make(chan [2]string)
-	token := client.Subscribe(topic, byte(qos), func(client mqtt.Client, msg mqtt.Message) {
-		choke <- [2]string{msg.Topic(), string(msg.Payload())}
-	})
-	if token.Wait() && token.Error() != nil {
-		log.Println(token.Error())
-		os.Exit(1)
-	}
-	return choke
-}
-
-func connect(address string, user string, password string) mqtt.Client {
+func connect(address string, user string, password string, topic string, execute Executor) mqtt.Client {
 	flag.Parse()
+
+	mqtt.ERROR = log.New(os.Stdout, "[ERROR] ", 0)
+	mqtt.CRITICAL = log.New(os.Stdout, "[CRIT] ", 0)
+	mqtt.WARN = log.New(os.Stdout, "[WARN]  ", 0)
+	// mqtt.DEBUG = log.New(os.Stdout, "[DEBUG] ", 0)
 
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(address)
@@ -36,6 +27,23 @@ func connect(address string, user string, password string) mqtt.Client {
 	opts.SetUsername(user)
 	opts.SetPassword(password)
 	opts.SetCleanSession(cleansess)
+	opts.SetAutoReconnect(true)
+	opts.SetConnectRetry(true)
+	opts.SetConnectRetryInterval(5 * time.Second)
+	opts.KeepAlive = 10
+
+	opts.SetOnConnectHandler(func(c mqtt.Client) {
+		log.Println("Connected to broker.")
+		subscribe(c, topic, execute)
+	})
+
+	opts.SetConnectionLostHandler(func(c mqtt.Client, err error) {
+		log.Println("Connection lost:", err)
+	})
+
+	opts.OnReconnecting = func(mqtt.Client, *mqtt.ClientOptions) {
+		log.Println("attempting to reconnect")
+	}
 
 	client := mqtt.NewClient(opts)
 
@@ -80,17 +88,15 @@ func parseAndValidateFloat(input string) (bool, float32) {
 	return true, f32
 }
 
-func Subscribe(client mqtt.Client, topic string, dryRun bool, handler func(string) error) mqtt.Client {
-	choke := subscribe(client, topic)
-
-	go func() {
-		for {
-			incoming := <-choke
-			topic, payload := incoming[0], incoming[1]
-			log.Printf("Received in %s -> %s\n", topic, payload)
-			go handler(payload)
-		}
-	}()
+func subscribe(client mqtt.Client, topic string, handler func(string) error) mqtt.Client {
+	token := client.Subscribe(topic, qos, func(client mqtt.Client, msg mqtt.Message) {
+		message := string(msg.Payload())
+		handler(message)
+	})
+	token.Wait()
+	if err := token.Error(); err != nil {
+		log.Println("Subscribe error:", err)
+	}
 
 	log.Printf("Listening messages on topic '%s'\n", topic)
 

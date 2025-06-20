@@ -13,7 +13,7 @@ MAC = GOARCH=amd64 GOOS=darwin go
 MAIN_FILES = main.go mqtt.go http.go yaml.go executor.go
 
 dist/mqttrooper.amd64.darwin: $(MAIN_FILES)
-	$(MAC) build -o $@ $^
+	$(MAC) build -ldflags "-s -w" -o $@ $^
 
 dist/mqttrooper.amd64.linux: $(MAIN_FILES)
 	$(LINUX) build -o $@ $^
