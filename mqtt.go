@@ -72,22 +72,6 @@ func publish(client mqtt.Client, payload string, topic string) {
 	client.Disconnect(250)
 }
 
-func parseAndValidateFloat(input string) (bool, float32) {
-	f64, err := strconv.ParseFloat(input, 32)
-	if err != nil {
-		log.Println("   That wasn't a float ¬_¬\n> " + input)
-		return false, .0
-	}
-	f32 := float32(f64)
-
-	if f32 > 0.5 || f32 < 0 {
-		log.Println("  That float wasn't great :)\n> " + input)
-		return false, .0
-	}
-
-	return true, f32
-}
-
 func subscribe(client mqtt.Client, topic string, handler func(string) error) mqtt.Client {
 	token := client.Subscribe(topic, qos, func(client mqtt.Client, msg mqtt.Message) {
 		message := string(msg.Payload())
