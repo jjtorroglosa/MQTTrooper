@@ -4,7 +4,6 @@ import (
 	"flag"
 	"log"
 	"os"
-	"strconv"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -32,17 +31,19 @@ func connect(address string, user string, password string, topic string, execute
 	opts.SetConnectRetryInterval(5 * time.Second)
 	opts.KeepAlive = 10
 
-	opts.SetOnConnectHandler(func(c mqtt.Client) {
-		log.Println("Connected to broker.")
-		subscribe(c, topic, execute)
-	})
+	if execute != nil {
+		opts.SetOnConnectHandler(func(c mqtt.Client) {
+			log.Println("Connected to broker.")
+			subscribe(c, topic, execute)
+		})
 
-	opts.SetConnectionLostHandler(func(c mqtt.Client, err error) {
-		log.Println("Connection lost:", err)
-	})
+		opts.SetConnectionLostHandler(func(c mqtt.Client, err error) {
+			log.Println("Connection lost:", err)
+		})
 
-	opts.OnReconnecting = func(mqtt.Client, *mqtt.ClientOptions) {
-		log.Println("attempting to reconnect")
+		opts.OnReconnecting = func(mqtt.Client, *mqtt.ClientOptions) {
+			log.Println("attempting to reconnect")
+		}
 	}
 
 	client := mqtt.NewClient(opts)
