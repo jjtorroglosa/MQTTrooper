@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -8,19 +9,41 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 func listenHttp(bindAddress string, port int, allowedAddress string, execute Executor) {
-	http.HandleFunc("/", HomeHandler)
-	http.HandleFunc("/r", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", HomeHandler)
+	mux.HandleFunc("/r", func(w http.ResponseWriter, r *http.Request) {
 		ExecuteHandler(execute, allowedAddress, w, r)
 	})
 
 	addressPort := fmt.Sprintf("%s:%d", bindAddress, port)
+	srv := http.Server{
+		Addr:    addressPort,
+		Handler: mux,
+	}
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-quit
+		log.Println("HTTP: Shutting down server...")
+
+		// Context with timeout for graceful shutdown
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Println("HTTP: Server forced to shutdown:", err)
+		} else {
+			log.Println("HTTP: Server exited gracefully")
+		}
+	}()
 	log.Printf("Listening on http://%s\n", addressPort)
-	log.Fatal(http.ListenAndServe(addressPort, nil))
+	log.Fatal(srv.ListenAndServe())
 }
 
 func handleSigterm(client mqtt.Client) {
@@ -28,7 +51,7 @@ func handleSigterm(client mqtt.Client) {
 	signal.Notify(sigtermChan, os.Interrupt, syscall.SIGTERM)
 
 	<-sigtermChan
-	log.Println("SIGTERM received. Exiting...")
+	log.Println("MQTT: SIGTERM received. Exiting...")
 	if client != nil {
 		client.Disconnect(250)
 	}
@@ -36,7 +59,7 @@ func handleSigterm(client mqtt.Client) {
 	os.Exit(1)
 }
 
-func main() {
+func getCfg() Config {
 	var dryRun = flag.Bool("d", false, "Don't run the commands. For testing purposes")
 	var port = flag.Int("p", 8080, "Port to listen for HTTP requests")
 	var address = flag.String("b", "127.0.0.1", "Address to bind to")
@@ -45,14 +68,9 @@ func main() {
 	var payload = flag.String("message", "", "The message to publish")
 	var user = flag.String("user", "", "Mqtt user")
 	var password = flag.String("password", "", "Mqtt password")
-
-	var configFile = GetFlag()
+	var configFile = flag.String("c", "config.yaml", "The path to the config.yaml file")
 
 	flag.Parse()
-
-	fmt.Println("-------------------------------------------------")
-	fmt.Println("                    MQTTrooper                   ")
-	fmt.Println("-------------------------------------------------")
 
 	if *dryRun {
 		fmt.Println("** Dry run mode **")
@@ -67,6 +85,21 @@ func main() {
 		cfg.Mqtt.Pass = *password
 	}
 
+	cfg.Http.Port = *port
+	cfg.Http.BindAddress = *address
+	cfg.Http.AllowedAddress = *allowedAddress
+	cfg.Mqtt.Payload = *payload
+	cfg.Mqtt.Publish = *pub
+	return cfg
+}
+
+func main() {
+
+	fmt.Println("-------------------------------------------------")
+	fmt.Println("                    MQTTrooper                   ")
+	fmt.Println("-------------------------------------------------")
+	cfg := getCfg()
+
 	execute := CreateExecutor(cfg.Executor.DryRun, cfg.Executor.Shell, cfg.Services)
 
 	var client mqtt.Client
@@ -74,17 +107,17 @@ func main() {
 		client = connect(cfg.Mqtt.Address, cfg.Mqtt.User, cfg.Mqtt.Pass, cfg.Mqtt.Topic, execute)
 	}
 
-	if *pub == true {
-		if *payload == "" {
+	if cfg.Mqtt.Publish == true {
+		if cfg.Mqtt.Payload == "" {
 			log.Fatalln("Empty payload. You need to provide a valid payload to publish")
 		}
 
-		publish(client, *payload, cfg.Mqtt.Topic)
+		publish(client, cfg.Mqtt.Payload, cfg.Mqtt.Topic)
 		os.Exit(0)
 	}
 
 	if cfg.Http.Enabled {
-		go listenHttp(*address, *port, *allowedAddress, execute)
+		go listenHttp(cfg.Http.BindAddress, cfg.Http.Port, cfg.Http.AllowedAddress, execute)
 	}
 
 	handleSigterm(client)

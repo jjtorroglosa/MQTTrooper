@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -10,8 +9,10 @@ import (
 )
 
 type HttpConfig struct {
-	Enabled      bool
-	AllowAddress string
+	Enabled        bool
+	AllowedAddress string
+	Port           int
+	BindAddress    string
 }
 type MqttConfig struct {
 	Enabled bool
@@ -19,6 +20,8 @@ type MqttConfig struct {
 	User    string
 	Pass    string
 	Topic   string
+	Payload string
+	Publish bool
 }
 type ExecutorConfig struct {
 	Shell  string
@@ -30,10 +33,6 @@ type Config struct {
 	Mqtt     MqttConfig
 	Executor ExecutorConfig
 	Http     HttpConfig
-}
-
-func GetFlag() *string {
-	return flag.String("c", "config.yaml", "The path to the config.yaml file")
 }
 
 func openFile(file string) (string, error) {
