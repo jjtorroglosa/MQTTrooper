@@ -60,6 +60,7 @@ func handleSigterm(client mqtt.Client) {
 }
 
 func getCfg() Config {
+	flag := flag.NewFlagSet("mqttrooper", flag.ExitOnError)
 	var dryRun = flag.Bool("d", false, "Don't run the commands. For testing purposes")
 	var port = flag.Int("p", 8080, "Port to listen for HTTP requests")
 	var address = flag.String("b", "127.0.0.1", "Address to bind to")
@@ -70,7 +71,7 @@ func getCfg() Config {
 	var password = flag.String("password", "", "Mqtt password")
 	var configFile = flag.String("c", "config.yaml", "The path to the config.yaml file")
 
-	flag.Parse()
+	flag.Parse(os.Args)
 
 	if *dryRun {
 		fmt.Println("** Dry run mode **")

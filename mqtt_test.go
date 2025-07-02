@@ -10,6 +10,9 @@ import (
 	"time"
 
 	"github.com/brianvoe/gofakeit/v7"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/testcontainers/testcontainers-go"
@@ -36,7 +39,7 @@ func hash(s string) uint64 {
 	return uint64(h.Sum32())
 }
 
-func setupMqttTest(t *testing.T) *mqttTest {
+func setupMqttTest(t *testing.T, fixedHostPort *string) *mqttTest {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
 	any := gofakeit.New(hash(t.Name()))
 	req := testcontainers.ContainerRequest{
@@ -51,7 +54,22 @@ func setupMqttTest(t *testing.T) *mqttTest {
 			Consumers: []testcontainers.LogConsumer{&testLogConsumer{}},
 		},
 	}
-	ctx := context.Background()
+	if fixedHostPort != nil {
+		// Use fixed port on host instead of random (needed for example
+		// when testing reconnection so that it assigns the same port after restarting
+		// the container)
+		req.HostConfigModifier = func(hostConfig *container.HostConfig) {
+			hostConfig.PortBindings = nat.PortMap{
+				"1883/tcp": []nat.PortBinding{
+					{
+						HostIP:   "127.0.0.1",
+						HostPort: *fixedHostPort,
+					},
+				},
+			}
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	mqttC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
@@ -64,6 +82,7 @@ func setupMqttTest(t *testing.T) *mqttTest {
 		any:           any,
 		testContainer: mqttC,
 		teardown: func() {
+			cancel()
 			testcontainers.CleanupContainer(t, mqttC)
 			log.Println("Teardown finished")
 		},
@@ -71,19 +90,18 @@ func setupMqttTest(t *testing.T) *mqttTest {
 }
 
 func TestMqttSubscriptionsReceiveCommands(test *testing.T) {
-	t := setupMqttTest(test)
+	t := setupMqttTest(test, nil)
 	defer t.teardown()
-
 	filename := fmt.Sprintf("/tmp/mqttrooper-test-%s", t.any.LetterN(8))
+	os.Remove(filename)
+	defer os.Remove(filename)
 	serviceName := t.any.LetterN(8)
 	expectedString := t.any.LetterN(8)
-
 	cfg := getCfg()
 	cfg.Services = map[string]string{
 		serviceName: fmt.Sprintf("echo -n %s > %s", expectedString, filename),
 	}
 	cfg.Executor.DryRun = false
-
 	actualExecutor := CreateExecutor(cfg.Executor.DryRun, cfg.Executor.Shell, cfg.Services)
 	host, _ := t.testContainer.Host(t.ctx)
 	port, _ := t.testContainer.MappedPort(t.ctx, "1883/tcp")
@@ -105,8 +123,6 @@ func TestMqttSubscriptionsReceiveCommands(test *testing.T) {
 		nil,
 	)
 	defer publisher.Disconnect(250)
-	os.Remove(filename)
-	defer os.Remove(filename)
 	token := publisher.Publish(cfg.Mqtt.Topic, qos, false, serviceName)
 	if token.Error() != nil {
 		log.Printf("Error publishing payload %s on topic %s. \nError: %s\n", serviceName, cfg.Mqtt.Topic, token.Error())
@@ -123,4 +139,78 @@ func TestMqttSubscriptionsReceiveCommands(test *testing.T) {
 	bytes, err := os.ReadFile(filename)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedString, string(bytes))
+}
+
+func TestWhenBrokerIsRestartedClientReconnects(test *testing.T) {
+	port := "63033"
+	t := setupMqttTest(test, &port)
+	defer t.teardown()
+
+	filename := fmt.Sprintf("/tmp/mqttrooper-test-%s", t.any.LetterN(8))
+	serviceName := t.any.LetterN(8)
+	expectedString := t.any.LetterN(8)
+
+	cfg := getCfg()
+	cfg.Services = map[string]string{
+		serviceName: fmt.Sprintf("echo -n %s > %s", expectedString, filename),
+	}
+	cfg.Executor.DryRun = false
+
+	actualExecutor := CreateExecutor(cfg.Executor.DryRun, cfg.Executor.Shell, cfg.Services)
+	host, _ := t.testContainer.Host(t.ctx)
+	received := make(chan string, 2)
+	executor := Executor(func(service string) error {
+		err := actualExecutor(service)
+		received <- string(service)
+		return err
+	})
+	subscriber := connect(fmt.Sprintf("%s:%s", host, port), "subs", "subs", cfg.Mqtt.Topic, executor)
+	assert.True(t, subscriber.IsConnectionOpen())
+	defer subscriber.Disconnect(250)
+
+	restartContainer(t, subscriber)
+	assert.True(t, subscriber.IsConnectionOpen())
+
+	publisher := connect(
+		fmt.Sprintf("%s:%s", host, port),
+		"pub",
+		"pub",
+		cfg.Mqtt.Topic,
+		nil,
+	)
+	defer publisher.Disconnect(250)
+	token := publisher.Publish(cfg.Mqtt.Topic, qos, false, serviceName)
+	assert.NoError(t, token.Error())
+	token.WaitTimeout(2 * time.Second)
+	//Wait for message to be received with timeout
+	select {
+	case msg := <-received:
+		assert.Equal(t, serviceName, msg)
+	case <-time.After(2 * time.Second):
+		t.Fatal("Timeout waiting for message")
+	}
+
+	bytes, err := os.ReadFile(filename)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedString, string(bytes))
+}
+
+func restartContainer(t *mqttTest, subscriber mqtt.Client) {
+	timeout := 5 * time.Second
+	err := t.testContainer.Stop(t.ctx, &timeout)
+	assert.False(t, subscriber.IsConnectionOpen())
+	assert.NoError(t, err)
+	err = t.testContainer.Start(t.ctx)
+	assert.NoError(t, err)
+	waitUntilConnected(subscriber)
+}
+
+func waitUntilConnected(subscriber mqtt.Client) {
+	for i := range 100 {
+		log.Println("Checking if client connected: ", i)
+		if subscriber.IsConnectionOpen() {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }
