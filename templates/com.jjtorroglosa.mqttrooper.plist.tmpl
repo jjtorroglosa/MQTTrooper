@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.jjtorroglosa.mqttrooper</string>
+    <string>{{.MacId}}</string>
     <key>ProgramArguments</key>
     <array>
             <string>{{ .ExecutablePath }}</string>
@@ -13,7 +13,7 @@
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>{{ .Home }}/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <string>{{.PathEnv}}</string>
     </dict>
     <key>RunAtLoad</key>
     <true/>

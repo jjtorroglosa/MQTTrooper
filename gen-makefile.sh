@@ -2,7 +2,7 @@
 
 archs=("amd64" "arm64")
 oss=("darwin" "linux")
-cmds=("mqttrooper" "mqttrooper-publisher" "mqttrooper-services")
+cmds=("mqttrooper" "mqttrooper-publisher")
 
 cat <<EOF
 #
@@ -34,7 +34,7 @@ for os in "${oss[@]}"; do
         for cmd in "${cmds[@]}"; do
             cat <<EOF
 dist/$cmd.$os.$arch: cmd/$cmd/main.go $(find . -iname "*.go" -or -iname "*.tmpl" | tr -s "\n" " ")
-	GOARCH=$arch GOOS=$os go build $GO_FLAGS -o \$@ \$<
+	GOARCH=$arch GOOS=$os go build $GO_FLAGS -o \$@ $(find "cmd/$cmd" -iname "*.go" |tr -s "\n" " ")
 
 EOF
         done

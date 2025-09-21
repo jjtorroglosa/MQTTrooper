@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"mqttrooper/internal"
 	"os"
@@ -24,12 +25,34 @@ func handleSigterm(client mqtt.Client) {
 }
 
 func main() {
+	cfg := internal.GetCfg()
+	cmd := flag.Arg(0)
+	if cmd == "" || cmd == "serve" {
+		serve(cfg)
+		os.Exit(0)
+	}
+	if cmd == "dump-plist" {
+		generatePlist(cfg)
+		os.Exit(0)
+	}
+	if cmd == "dump-systemd-service" {
+		generateSystemdService(cfg)
+		os.Exit(0)
+	}
 
+	log.Fatalf("Unknown cmd: %s", cmd)
+}
+
+func serve(cfg internal.Config) {
 	log.Println("-------------------------------------------------")
 	log.Println("                    MQTTrooper                   ")
 	log.Println("-------------------------------------------------")
 
-	cfg := internal.GetCfg()
+	log.Printf("Config loaded: %#v\n", cfg)
+
+	if cfg.Executor.DryRun {
+		log.Println("** Dry run mode **")
+	}
 
 	execute := internal.CreateExecutor(cfg.Executor.DryRun, cfg.Executor.Shell, cfg.Services)
 	log.Println("Config created")

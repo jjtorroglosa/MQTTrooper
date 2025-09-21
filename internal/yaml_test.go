@@ -29,6 +29,13 @@ executor:
 services:
   service1: "command1"
   service2: "command2"
+
+daemon:
+  cwd: "any/cwd"
+  env_path: "any:path_variable"
+  log_file_path: "info_log_file"
+  error_file_path: "error_log_file"
+  mac_id: "com.some.id"
 `
 	tmpfile, err := os.CreateTemp("", "test.yaml")
 	assert.NoError(t, err)
@@ -68,6 +75,13 @@ services:
 	assert.Equal(t, "command1", cfg.ServicesList[0].Command)
 	assert.Equal(t, "service2", cfg.ServicesList[1].Name)
 	assert.Equal(t, "command2", cfg.ServicesList[1].Command)
+
+	assert.Equal(t, "any/cwd", cfg.Daemon.Cwd)
+	assert.Equal(t, "any:path_variable", cfg.Daemon.EnvPath)
+
+	assert.Equal(t, "info_log_file", cfg.Daemon.LogFilePath)
+	assert.Equal(t, "error_log_file", cfg.Daemon.ErrorFilePath)
+	assert.Equal(t, "com.some.id", cfg.Daemon.MacId)
 }
 
 func TestLoadConfigFile_FileNotFound(t *testing.T) {

@@ -2,7 +2,6 @@ package internal
 
 import (
 	"flag"
-	"log"
 )
 
 func GetCfg() Config {
@@ -17,10 +16,6 @@ func GetCfg() Config {
 	var httpAllowedAddress = flag.String("allow", "", "Address to allow HTTP requests from")
 
 	flag.Parse()
-
-	if *dryRun {
-		log.Println("** Dry run mode **")
-	}
 
 	cfg := LoadConfigFile(*configFile)
 	cfg.Executor.DryRun = *dryRun

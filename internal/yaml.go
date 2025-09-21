@@ -3,9 +3,10 @@ package internal
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 type HttpConfig struct {
@@ -35,12 +36,22 @@ type Service struct {
 type ServicesList []Service
 type ServicesMap map[string]string
 
+type DaemonConfig struct {
+	Cwd           string `yaml:"cwd"`
+	EnvPath       string `yaml:"env_path"`
+	LogFilePath   string `yaml:"log_file_path"`
+	ErrorFilePath string `yaml:"error_file_path"`
+	MacId         string `yaml:"mac_id"`
+}
+
 type Config struct {
+	ConfigPath   string
 	ServicesList ServicesList
 	Services     ServicesMap    `yaml:"services"`
 	Mqtt         MqttConfig     `yaml:"mqtt"`
 	Executor     ExecutorConfig `yaml:"executor"`
 	Http         HttpConfig     `yaml:"http"`
+	Daemon       DaemonConfig   `yaml:"daemon"`
 }
 
 func openFile(file string) (string, error) {
@@ -54,10 +65,18 @@ func openFile(file string) (string, error) {
 func LoadConfigFile(file string) Config {
 	data, err := openFile(file)
 	if err != nil {
-		log.Println(err)
-		os.Exit(1)
+		log.Fatalf("error opening file: %v", err)
+	}
+	file, err = filepath.Abs(file)
+	if err != nil {
+		log.Fatalf(
+			"error getting the path of the config file %s: %v",
+			file,
+			err,
+		)
 	}
 	cfg := Config{
+		ConfigPath: file,
 		Mqtt: MqttConfig{
 			Enabled:                  false,
 			Address:                  "",
@@ -77,11 +96,19 @@ func LoadConfigFile(file string) Config {
 			Port:           8080,
 			BindAddress:    "127.0.0.1",
 		},
+		Daemon: DaemonConfig{
+			Cwd:           "",
+			EnvPath:       "",
+			LogFilePath:   file,
+			ErrorFilePath: file,
+			MacId:         "com.jtorr.mqttrooper",
+		},
 	}
 	err = yaml.Unmarshal([]byte(data), &cfg)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
+
 	for k, v := range cfg.Services {
 		cfg.ServicesList = append(cfg.ServicesList, Service{
 			Name:    k,
@@ -94,6 +121,5 @@ func LoadConfigFile(file string) Config {
 	sort.Slice(cfg.ServicesList, func(i, j int) bool {
 		return cfg.ServicesList[i].Name < cfg.ServicesList[j].Name
 	})
-	log.Printf("Config file %s loaded: %#v\n", file, cfg)
 	return cfg
 }
