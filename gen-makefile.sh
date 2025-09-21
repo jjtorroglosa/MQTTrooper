@@ -33,8 +33,8 @@ for os in "${oss[@]}"; do
     for arch in "${archs[@]}"; do
         for cmd in "${cmds[@]}"; do
             cat <<EOF
-dist/$cmd.$os.$arch: cmd/$cmd/main.go
-	GOARCH=$arch GOOS=$os go build $GO_FLAGS -o \$@ \$^
+dist/$cmd.$os.$arch: cmd/$cmd/main.go $(find . -iname "*.go" | tr -s "\n" " ")
+	GOARCH=$arch GOOS=$os go build $GO_FLAGS -o \$@ \$<
 
 EOF
         done
