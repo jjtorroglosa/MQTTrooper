@@ -1,10 +1,11 @@
 package internal
 
 import (
+	"encoding/base64"
 	"flag"
 )
 
-func GetCfg() Config {
+func GetCfg() (*Config, error) {
 	var dryRun = flag.Bool("d", false, "Don't run the commands. For testing purposes")
 	var configFile = flag.String("c", "config.yaml", "The path to the config.yaml file")
 
@@ -17,7 +18,10 @@ func GetCfg() Config {
 
 	flag.Parse()
 
-	cfg := LoadConfigFile(*configFile)
+	cfg, err := LoadConfigFile(*configFile)
+	if err != nil {
+		return nil, err
+	}
 	cfg.Executor.DryRun = *dryRun
 	if *mqttUser != "" {
 		cfg.Mqtt.User = *mqttUser
@@ -36,17 +40,20 @@ func GetCfg() Config {
 	if *httpAllowedAddress != "" {
 		cfg.Http.AllowedAddress = *httpAllowedAddress
 	}
-	validateCfg(cfg)
-	return cfg
+	validateMqttConfig(cfg.Mqtt)
+	csrfKey, err := base64.StdEncoding.DecodeString(cfg.Http.CsrfSecretBase64)
+	cfg.Http.CsrfSecret = csrfKey
+
+	return cfg, nil
 }
 
-func validateCfg(cfg Config) {
-	if cfg.Mqtt.Enabled {
-		if cfg.Mqtt.Address == "" ||
-			cfg.Mqtt.Topic == "" ||
-			cfg.Mqtt.User == "" ||
-			cfg.Mqtt.Pass == "" ||
-			cfg.Mqtt.ClientID == "" {
+func validateMqttConfig(cfg MqttConfig) {
+	if cfg.Enabled {
+		if cfg.Address == "" ||
+			cfg.Topic == "" ||
+			cfg.User == "" ||
+			cfg.Pass == "" ||
+			cfg.ClientID == "" {
 			panic("Invalid cfg, some mqtt fields are missing")
 		}
 	}

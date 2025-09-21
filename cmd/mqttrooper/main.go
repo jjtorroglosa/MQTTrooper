@@ -25,7 +25,10 @@ func handleSigterm(client mqtt.Client) {
 }
 
 func main() {
-	cfg := internal.GetCfg()
+	cfg, err := internal.GetCfg()
+	if err != nil {
+		log.Fatalf("Error reading the csrf key: %v", err)
+	}
 	cmd := flag.Arg(0)
 	if cmd == "" || cmd == "serve" {
 		serve(cfg)
@@ -43,7 +46,7 @@ func main() {
 	log.Fatalf("Unknown cmd: %s", cmd)
 }
 
-func serve(cfg internal.Config) {
+func serve(cfg *internal.Config) {
 	log.Println("-------------------------------------------------")
 	log.Println("                    MQTTrooper                   ")
 	log.Println("-------------------------------------------------")
@@ -65,7 +68,7 @@ func serve(cfg internal.Config) {
 
 	if cfg.Http.Enabled {
 		h := internal.NewHttp(cfg)
-		go h.ListenHttp(cfg.Http.BindAddress, cfg.Http.Port, cfg.Http.AllowedAddress, execute)
+		go h.ListenHttp(&cfg.Http, execute)
 	}
 
 	handleSigterm(client)

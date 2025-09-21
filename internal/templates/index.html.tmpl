@@ -75,9 +75,9 @@
     <iframe name="hiddenFrame" class="hidden-frame"></iframe>
     <div class="container">
         <h1>MQTTrooper</h1>
-        <form action="/r" method="get" target="hiddenFrame">
+        <form action="http://127.0.0.1:8080/r" method="post" target="hiddenFrame">
             <div class="button-list">
-                {{ range . }}
+                {{ range .Links }}
                 <input class="service-button" type="submit" name="s" value="{{.Service.Name}}" />
                 {{ end }}
             </div>

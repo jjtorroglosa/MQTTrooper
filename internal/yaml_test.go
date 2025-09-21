@@ -15,6 +15,7 @@ http:
   port: 8080
   allowed_address: "127.0.0.1"
   bind_address: "0.0.0.0"
+  csrf_secret: "aGVsbG8gd29ybGQ="
 mqtt:
   enabled: true
   address: "tcp://127.0.0.1:1883"
@@ -47,13 +48,15 @@ daemon:
 	assert.NoError(t, err)
 
 	// Call LoadConfigFile with the temporary file
-	cfg := LoadConfigFile(tmpfile.Name())
+	cfg, err := LoadConfigFile(tmpfile.Name())
+	assert.NoError(t, err)
 
 	// Assert that the returned Config struct contains the expected values
 	assert.Equal(t, true, cfg.Http.Enabled)
 	assert.Equal(t, 8080, cfg.Http.Port)
 	assert.Equal(t, "127.0.0.1", cfg.Http.AllowedAddress)
 	assert.Equal(t, "0.0.0.0", cfg.Http.BindAddress)
+	assert.Equal(t, "hello world", string(cfg.Http.CsrfSecret))
 
 	assert.Equal(t, true, cfg.Mqtt.Enabled)
 	assert.Equal(t, "tcp://127.0.0.1:1883", cfg.Mqtt.Address)
@@ -108,7 +111,8 @@ http:
 	assert.NoError(t, err)
 
 	// Call LoadConfigFile with the temporary file
-	cfg := LoadConfigFile(tmpfile.Name())
+	cfg, err := LoadConfigFile(tmpfile.Name())
+	assert.NoError(t, err)
 
 	// Assert that the returned Config struct contains the expected values
 	assert.Equal(t, true, cfg.Http.Enabled)

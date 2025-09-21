@@ -7,8 +7,8 @@ import (
 	"text/template"
 )
 
-func generatePlist(cfg internal.Config) {
-	tmpl, err := template.ParseFiles("templates/com.jjtorroglosa.mqttrooper.plist.tmpl")
+func generatePlist(cfg *internal.Config) {
+	tmpl, err := template.ParseFS(templates, "templates/com.jjtorroglosa.mqttrooper.plist.tmpl")
 	if err != nil {
 		log.Fatalf("Error parsing plist tmpl: %v", err)
 	}
@@ -38,12 +38,12 @@ func generatePlist(cfg internal.Config) {
 	}
 }
 
-func generateSystemdService(cfg internal.Config) {
+func generateSystemdService(cfg *internal.Config) {
 	executablePath, err := os.Executable()
 	if err != nil {
 		log.Fatalf("Error getting executable: %v", err)
 	}
-	tmpl, err := template.ParseFiles("templates/mqttrooper.service.tmpl")
+	tmpl, err := template.ParseFS(templates, "templates/mqttrooper.service.tmpl")
 	if err != nil {
 		log.Fatalf("Error parsing plist tmpl: %v", err)
 	}

@@ -5,24 +5,9 @@ import (
 	"log"
 	"mqttrooper/internal"
 	"os"
-	"os/signal"
-	"syscall"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
-
-func handleSigterm(client mqtt.Client) {
-	sigtermChan := make(chan os.Signal, 1)
-	signal.Notify(sigtermChan, os.Interrupt, syscall.SIGTERM)
-
-	<-sigtermChan
-	log.Println("MQTT: SIGTERM received. Exiting...")
-	if client != nil {
-		client.Disconnect(250)
-	}
-	log.Println("Client Disconnected")
-	os.Exit(1)
-}
 
 func main() {
 
@@ -36,7 +21,11 @@ func main() {
 	flag.Parse()
 
 	var client mqtt.Client
-	cfg := internal.LoadConfigFile(*configFile)
+	cfg, err := internal.LoadConfigFile(*configFile)
+	if err != nil {
+		log.Fatalf("Error loading config file: %v", err)
+	}
+
 	cfg.Mqtt.ClientID = *clientId
 	client = internal.Connect(cfg.Mqtt.Address, cfg.Mqtt.ClientID, cfg.Mqtt.User, cfg.Mqtt.Pass, cfg.Mqtt.Topic, nil)
 

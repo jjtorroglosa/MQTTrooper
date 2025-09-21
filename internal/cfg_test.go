@@ -20,7 +20,7 @@ func TestValidateCfgMqttEnabled(t *testing.T) {
 
 	t.Run("should not panic when all mqtt fields are present", func(t *testing.T) {
 		assert.NotPanics(t, func() {
-			validateCfg(baseCfg)
+			validateMqttConfig(baseCfg.Mqtt)
 		})
 	})
 
@@ -28,7 +28,7 @@ func TestValidateCfgMqttEnabled(t *testing.T) {
 		cfg := baseCfg
 		cfg.Mqtt.Address = ""
 		assert.PanicsWithValue(t, "Invalid cfg, some mqtt fields are missing", func() {
-			validateCfg(cfg)
+			validateMqttConfig(cfg.Mqtt)
 		})
 	})
 
@@ -36,7 +36,7 @@ func TestValidateCfgMqttEnabled(t *testing.T) {
 		cfg := baseCfg
 		cfg.Mqtt.Topic = ""
 		assert.PanicsWithValue(t, "Invalid cfg, some mqtt fields are missing", func() {
-			validateCfg(cfg)
+			validateMqttConfig(cfg.Mqtt)
 		})
 	})
 
@@ -44,7 +44,7 @@ func TestValidateCfgMqttEnabled(t *testing.T) {
 		cfg := baseCfg
 		cfg.Mqtt.User = ""
 		assert.PanicsWithValue(t, "Invalid cfg, some mqtt fields are missing", func() {
-			validateCfg(cfg)
+			validateMqttConfig(cfg.Mqtt)
 		})
 	})
 
@@ -52,7 +52,7 @@ func TestValidateCfgMqttEnabled(t *testing.T) {
 		cfg := baseCfg
 		cfg.Mqtt.Pass = ""
 		assert.PanicsWithValue(t, "Invalid cfg, some mqtt fields are missing", func() {
-			validateCfg(cfg)
+			validateMqttConfig(cfg.Mqtt)
 		})
 	})
 
@@ -60,7 +60,7 @@ func TestValidateCfgMqttEnabled(t *testing.T) {
 		cfg := baseCfg
 		cfg.Mqtt.ClientID = ""
 		assert.PanicsWithValue(t, "Invalid cfg, some mqtt fields are missing", func() {
-			validateCfg(cfg)
+			validateMqttConfig(cfg.Mqtt)
 		})
 	})
 }
@@ -74,7 +74,7 @@ func TestValidateCfgMqttDisabled(t *testing.T) {
 
 	t.Run("should not panic when mqtt is disabled", func(t *testing.T) {
 		assert.NotPanics(t, func() {
-			validateCfg(baseCfg)
+			validateMqttConfig(baseCfg.Mqtt)
 		})
 	})
 }

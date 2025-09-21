@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -13,18 +14,21 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/gorilla/csrf"
 )
 
 type Link struct {
-	Service Service
+	Service   Service
+	CSRFToken string
 }
 
 type _http struct {
-	cfg   Config
+	cfg   *Config
 	links []Link
 }
 
-func NewHttp(cfg Config) *_http {
+func NewHttp(cfg *Config) *_http {
 	var links []Link
 	for _, service := range cfg.ServicesList {
 		links = append(links, Link{Service: service})
@@ -36,32 +40,51 @@ func NewHttp(cfg Config) *_http {
 }
 
 func (h _http) HomeHandler(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("templates/index.html.tmpl")
+	tmpl, err := template.ParseFS(templates, "templates/index.html.tmpl")
 	if err != nil {
 		log.Println("Error reading the template")
 		log.Println(err)
 		return
 	}
-	err2 := tmpl.Execute(w, h.links)
+	// We need to create a new slice of links with the CSRF token
+	view := struct {
+		Links     []Link
+		CsrfToken template.HTML
+		CsrfTag   string
+	}{
+		Links:     []Link{},
+		CsrfToken: csrf.TemplateField(r),
+	}
+
+	for _, link := range h.links {
+		view.Links = append(view.Links, Link{
+			Service: link.Service,
+		})
+	}
+
+	err2 := tmpl.Execute(w, view)
 	if err2 != nil {
 		log.Println(err2)
 	}
 }
 
-func ExecuteHandler(
+func (h _http) ExecuteHandler(
 	execute Executor,
 	allowedAddress string,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := func() error {
-			log.Printf("[GET] %s %s\n", r.RemoteAddr, r.URL)
-			log.Printf("[GET] %s %s\n", r.Header, r.URL)
+			log.Printf("[POST] %s %s\n", r.RemoteAddr, r.URL)
+			log.Printf("[POST] %s %s\n", r.Header, r.URL)
 			if strings.Split(r.RemoteAddr, ":")[0] != allowedAddress {
 				unauthorized := "Unauthorized"
 				log.Println(unauthorized)
 				return errors.New(unauthorized)
 			}
-			service := html.EscapeString(r.URL.Query().Get("s"))
+			service := html.EscapeString(r.FormValue("s"))
+			if _, ok := h.cfg.Services[service]; !ok {
+				return errors.New("Unknown service")
+			}
 
 			err := execute(service)
 			if err != nil {
@@ -79,12 +102,30 @@ func ExecuteHandler(
 	}
 }
 
-func (h *_http) ListenHttp(bindAddress string, port int, allowedAddress string, execute Executor) {
+func (h *_http) ListenHttp(cfg *HttpConfig, execute Executor) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", h.HomeHandler)
-	mux.HandleFunc("/r", ExecuteHandler(execute, allowedAddress))
+	mux.HandleFunc("/r", h.ExecuteHandler(execute, cfg.AllowedAddress))
 
-	addressPort := fmt.Sprintf("%s:%d", bindAddress, port)
+	addressPort := fmt.Sprintf("%s:%d", cfg.BindAddress, cfg.Port)
+
+	// TODO add middleware to check csrf
+	_ = csrf.Protect(cfg.CsrfSecret,
+		csrf.Secure(false), // Set to true in production
+		csrf.CookieName("csrf_token"),
+		csrf.FieldName("csrf_token"),
+		csrf.TrustedOrigins([]string{
+			"http://127.0.0.1:8080",
+		}),
+		csrf.ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			bytes, _ := io.ReadAll(r.Body)
+			log.Printf("CSRF token invalid: %v %v %v %v\n", r.Method, r.URL, string(bytes), csrf.FailureReason(r))
+			log.Printf("Origin: %q, Referer: %q", r.Header.Get("Origin"), r.Header.Get("Referer"))
+
+			http.Error(w, "Forbidden - CSRF token invalid", http.StatusForbidden)
+		})),
+	)
+
 	srv := http.Server{
 		Addr:    addressPort,
 		Handler: mux,

@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"encoding/base64"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -10,10 +12,12 @@ import (
 )
 
 type HttpConfig struct {
-	Enabled        bool   `yaml:"enabled"`
-	AllowedAddress string `yaml:"allowed_address"`
-	Port           int    `yaml:"port"`
-	BindAddress    string `yaml:"bind_address"`
+	Enabled          bool   `yaml:"enabled"`
+	AllowedAddress   string `yaml:"allowed_address"`
+	Port             int    `yaml:"port"`
+	BindAddress      string `yaml:"bind_address"`
+	CsrfSecretBase64 string `yaml:"csrf_secret"`
+	CsrfSecret       []byte `yaml:"-"`
 }
 type MqttConfig struct {
 	Enabled                  bool   `yaml:"enabled"`
@@ -62,7 +66,7 @@ func openFile(file string) (string, error) {
 	return string(content), nil
 }
 
-func LoadConfigFile(file string) Config {
+func LoadConfigFile(file string) (*Config, error) {
 	data, err := openFile(file)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
@@ -118,8 +122,13 @@ func LoadConfigFile(file string) Config {
 	if cfg.Mqtt.ConnectionTimeoutSeconds <= 0 || cfg.Mqtt.ConnectionTimeoutSeconds > 10 {
 		cfg.Mqtt.ConnectionTimeoutSeconds = 3
 	}
+	bytes, err := base64.StdEncoding.DecodeString(cfg.Http.CsrfSecretBase64)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading the csrf secret: %v", err)
+	}
+	cfg.Http.CsrfSecret = bytes
 	sort.Slice(cfg.ServicesList, func(i, j int) bool {
 		return cfg.ServicesList[i].Name < cfg.ServicesList[j].Name
 	})
-	return cfg
+	return &cfg, nil
 }

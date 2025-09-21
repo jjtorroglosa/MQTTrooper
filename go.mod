@@ -7,6 +7,7 @@ require (
 	github.com/docker/docker v28.0.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/eclipse/paho.mqtt.golang v1.5.0
+	github.com/gorilla/csrf v1.7.3
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0
 	go.yaml.in/yaml/v4 v4.0.0-rc.2
@@ -30,6 +31,7 @@ require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
