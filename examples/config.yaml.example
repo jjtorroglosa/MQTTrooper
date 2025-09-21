@@ -1,5 +1,5 @@
 executor:
-  shell: /bin/bash
+  shell: /usr/bin/env bash
 services:
   snapserver: "sudo systemctl restart snapserver.service"
   snapclient: "systemctl --user restart snapclient.service"
