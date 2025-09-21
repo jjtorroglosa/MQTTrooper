@@ -3,7 +3,6 @@ package internal
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"log"
 	"os/exec"
 	"strings"
@@ -25,7 +24,7 @@ func CreateExecutor(dryRun bool, shell string, services map[string]string) Execu
 		parts := strings.Fields(shell) // → []string{"/usr/bin/env", "bash"}
 		parts = append(parts, "-c")
 		parts = append(parts, commandToExecute)
-		fmt.Printf("%v\n", parts)
+		log.Printf("%v\n", parts)
 		cmd := exec.Command(parts[0], parts[1:]...)
 		cmd.Stdout = &output
 		cmd.Stderr = &output

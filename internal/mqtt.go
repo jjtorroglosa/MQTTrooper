@@ -45,12 +45,17 @@ func Connect(address string, clientId string, user string, password string, topi
 
 	client := mqtt.NewClient(opts)
 
+	log.Printf("...Connecting to broker %s\n", address)
 	token := client.Connect()
-	if token.Wait() && token.Error() != nil {
+	ok := token.WaitTimeout(3 * time.Second)
+	if !ok {
+		panic("❌ Connection timeout")
+	}
+	if token.Error() != nil {
 		panic(token.Error())
 	}
 
-	log.Printf("Connected to broker %s\n", address)
+	log.Printf("✅ Connected to broker %s\n", address)
 
 	return client
 }

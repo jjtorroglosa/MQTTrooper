@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"mqttrooper/internal"
 	"os"
@@ -26,18 +25,20 @@ func handleSigterm(client mqtt.Client) {
 
 func main() {
 
-	fmt.Println("-------------------------------------------------")
-	fmt.Println("                    MQTTrooper                   ")
-	fmt.Println("-------------------------------------------------")
+	log.Println("-------------------------------------------------")
+	log.Println("                    MQTTrooper                   ")
+	log.Println("-------------------------------------------------")
 
 	cfg := internal.GetCfg()
 
 	execute := internal.CreateExecutor(cfg.Executor.DryRun, cfg.Executor.Shell, cfg.Services)
+	log.Println("Config created")
 
 	var client mqtt.Client
 	if cfg.Mqtt.Enabled {
 		client = internal.Connect(cfg.Mqtt.Address, cfg.Mqtt.ClientID, cfg.Mqtt.User, cfg.Mqtt.Pass, cfg.Mqtt.Topic, execute)
 	}
+	log.Println("Connected to mqtt")
 
 	if cfg.Http.Enabled {
 		h := internal.NewHttp(cfg)

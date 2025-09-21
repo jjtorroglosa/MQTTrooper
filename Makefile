@@ -14,3 +14,8 @@ clean:
 	rm -rf build
 
 include build/go.mk
+
+.PHONY: test
+test:
+	go test ${TEST_ARGS} ./...
+

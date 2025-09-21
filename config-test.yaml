@@ -20,7 +20,7 @@ http:
 mqtt:
   enabled: true
   user: whatever
-  clientid: whatever
+  client_id: whatever
   pass: whatever
   address: tcp://127.0.0.1:1883
   topic: /mqttrooper/b

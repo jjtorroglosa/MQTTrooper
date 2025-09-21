@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"mqttrooper/internal"
 	"os"
@@ -27,9 +26,9 @@ func handleSigterm(client mqtt.Client) {
 
 func main() {
 
-	fmt.Println("-------------------------------------------------")
-	fmt.Println("                    MQTTrooper                   ")
-	fmt.Println("-------------------------------------------------")
+	log.Println("-------------------------------------------------")
+	log.Println("                    MQTTrooper                   ")
+	log.Println("-------------------------------------------------")
 
 	var payload = flag.String("message", "", "The message to publish")
 	var configFile = flag.String("c", "config.yaml", "The path to the config.yaml file")

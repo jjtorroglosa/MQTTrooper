@@ -38,47 +38,51 @@ func NewHttp(cfg Config) *_http {
 func (h _http) HomeHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.ParseFiles("templates/index.html.tmpl")
 	if err != nil {
-		fmt.Println("Error reading the template")
-		fmt.Println(err)
+		log.Println("Error reading the template")
+		log.Println(err)
 		return
 	}
 	err2 := tmpl.Execute(w, h.links)
 	if err2 != nil {
-		fmt.Println(err2)
+		log.Println(err2)
 	}
 }
 
 func ExecuteHandler(
 	execute Executor,
 	allowedAddress string,
-	w http.ResponseWriter,
-	r *http.Request,
-) error {
-	log.Printf("[GET] %s %s\n", r.RemoteAddr, r.URL)
-	log.Printf("[GET] %s %s\n", r.Header, r.URL)
-	if strings.Split(r.RemoteAddr, ":")[0] != allowedAddress {
-		unauthorized := "Unauthorized"
-		log.Println(unauthorized)
-		return errors.New(unauthorized)
-	}
-	service := html.EscapeString(r.URL.Query().Get("s"))
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := func() error {
+			log.Printf("[GET] %s %s\n", r.RemoteAddr, r.URL)
+			log.Printf("[GET] %s %s\n", r.Header, r.URL)
+			if strings.Split(r.RemoteAddr, ":")[0] != allowedAddress {
+				unauthorized := "Unauthorized"
+				log.Println(unauthorized)
+				return errors.New(unauthorized)
+			}
+			service := html.EscapeString(r.URL.Query().Get("s"))
 
-	err := execute(service)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	fmt.Fprintf(w, "{\"result\": \"ok\"}\n")
+			err := execute(service)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+			fmt.Fprintf(w, "{\"result\": \"ok\"}\n")
 
-	return nil
+			return nil
+		}()
+
+		if err != nil {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+	}
 }
 
 func (h *_http) ListenHttp(bindAddress string, port int, allowedAddress string, execute Executor) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", h.HomeHandler)
-	mux.HandleFunc("/r", func(w http.ResponseWriter, r *http.Request) {
-		ExecuteHandler(execute, allowedAddress, w, r)
-	})
+	mux.HandleFunc("/r", ExecuteHandler(execute, allowedAddress))
 
 	addressPort := fmt.Sprintf("%s:%d", bindAddress, port)
 	srv := http.Server{

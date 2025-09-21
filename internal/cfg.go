@@ -2,24 +2,24 @@ package internal
 
 import (
 	"flag"
-	"fmt"
+	"log"
 )
 
 func GetCfg() Config {
 	var dryRun = flag.Bool("d", false, "Don't run the commands. For testing purposes")
 	var configFile = flag.String("c", "config.yaml", "The path to the config.yaml file")
 
-	var mqttUser = flag.String("user", "", "Mqtt user")
-	var mqttPassword = flag.String("password", "", "Mqtt password")
+	var mqttUser = flag.String("user", "", "MQTT user")
+	var mqttPassword = flag.String("password", "", "MQTT Password")
 
-	var httpPort = flag.Int("p", 8080, "Port to listen for HTTP requests")
-	var httpBindAddress = flag.String("b", "127.0.0.1", "Address to bind to")
-	var httpAllowedAddress = flag.String("allow", "127.0.0.1", "Address to allow requests from")
+	var httpPort = flag.Int("p", -1, "Port to listen for HTTP requests")
+	var httpBindAddress = flag.String("b", "", "Address to bind HTTP server to")
+	var httpAllowedAddress = flag.String("allow", "", "Address to allow HTTP requests from")
 
 	flag.Parse()
 
 	if *dryRun {
-		fmt.Println("** Dry run mode **")
+		log.Println("** Dry run mode **")
 	}
 
 	cfg := LoadConfigFile(*configFile)
@@ -31,8 +31,28 @@ func GetCfg() Config {
 		cfg.Mqtt.Pass = *mqttPassword
 	}
 
-	cfg.Http.Port = *httpPort
-	cfg.Http.BindAddress = *httpBindAddress
-	cfg.Http.AllowedAddress = *httpAllowedAddress
+	if *httpPort != -1 {
+		cfg.Http.Port = *httpPort
+	}
+	if *httpBindAddress != "" {
+		cfg.Http.BindAddress = *httpBindAddress
+	}
+
+	if *httpAllowedAddress != "" {
+		cfg.Http.AllowedAddress = *httpAllowedAddress
+	}
+	validateCfg(cfg)
 	return cfg
+}
+
+func validateCfg(cfg Config) {
+	if cfg.Mqtt.Enabled {
+		if cfg.Mqtt.Address == "" ||
+			cfg.Mqtt.Topic == "" ||
+			cfg.Mqtt.User == "" ||
+			cfg.Mqtt.Pass == "" ||
+			cfg.Mqtt.ClientID == "" {
+			panic("Invalid cfg, some mqtt fields are missing")
+		}
+	}
 }
