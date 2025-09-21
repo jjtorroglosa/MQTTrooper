@@ -1,16 +1,87 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>SV</title>
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  </head>
-  <body>
-    <iframe name="hiddenFrame" width="0" height="0" border="0" style="display: none;"></iframe>
-    <form action="/r" method="get" target="hiddenFrame">
-        {{ range . }}
-        <input style="font-size: 20px;" type="submit" name="s" value="{{.Service.Name}}" />
-        {{ end }}
-    </form>
-  </body>
+    <title>MQTTrooper</title>
+    <style>
+        :root {
+            --background: #1a1b26;
+            --foreground: #a9b1d6;
+            --button-bg: #292e42;
+            --button-hover-bg: #414868;
+            --button-fg: #c0caf5;
+            --border: #414868;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--foreground);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            color: var(--button-fg);
+        }
+
+        .button-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .service-button {
+            background-color: var(--button-bg);
+            color: var(--button-fg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.8rem;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .service-button:hover {
+            background-color: var(--button-hover-bg);
+            transform: translateY(-3px);
+        }
+
+        .service-button:active {
+            transform: translateY(0);
+        }
+
+        .hidden-frame {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <iframe name="hiddenFrame" class="hidden-frame"></iframe>
+    <div class="container">
+        <h1>MQTTrooper</h1>
+        <form action="/r" method="get" target="hiddenFrame">
+            <div class="button-list">
+                {{ range . }}
+                <input class="service-button" type="submit" name="s" value="{{.Service.Name}}" />
+                {{ end }}
+            </div>
+        </form>
+    </div>
+</body>
 </html>

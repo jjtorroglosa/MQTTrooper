@@ -3,6 +3,7 @@ package internal
 import (
 	"log"
 	"os"
+	"sort"
 
 	"gopkg.in/yaml.v3"
 )
@@ -66,6 +67,9 @@ func LoadConfigFile(file string) Config {
 			Command: v,
 		})
 	}
+	sort.Slice(cfg.ServicesList, func(i, j int) bool {
+		return cfg.ServicesList[i].Name < cfg.ServicesList[j].Name
+	})
 	log.Printf("Config file loaded: %s\n", file)
 	log.Printf("Config file loaded: %v\n", cfg)
 	return cfg
