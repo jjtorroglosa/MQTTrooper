@@ -26,12 +26,19 @@ type ExecutorConfig struct {
 	Shell  string
 	DryRun bool
 }
+type Service struct {
+	Name    string
+	Command string
+}
+type ServicesList []Service
 type ServicesMap map[string]string
+
 type Config struct {
-	Services ServicesMap
-	Mqtt     MqttConfig
-	Executor ExecutorConfig
-	Http     HttpConfig
+	ServicesList ServicesList
+	Services     ServicesMap
+	Mqtt         MqttConfig
+	Executor     ExecutorConfig
+	Http         HttpConfig
 }
 
 func openFile(file string) (string, error) {
@@ -53,6 +60,13 @@ func LoadConfigFile(file string) Config {
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
+	for k, v := range cfg.Services {
+		cfg.ServicesList = append(cfg.ServicesList, Service{
+			Name:    k,
+			Command: v,
+		})
+	}
 	log.Printf("Config file loaded: %s\n", file)
+	log.Printf("Config file loaded: %v\n", cfg)
 	return cfg
 }

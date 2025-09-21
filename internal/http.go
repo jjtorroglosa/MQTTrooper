@@ -16,7 +16,7 @@ import (
 )
 
 type Link struct {
-	Service string
+	Service Service
 }
 
 type _http struct {
@@ -26,7 +26,7 @@ type _http struct {
 
 func NewHttp(cfg Config) *_http {
 	var links []Link
-	for service := range cfg.Services {
+	for _, service := range cfg.ServicesList {
 		links = append(links, Link{Service: service})
 	}
 	return &_http{

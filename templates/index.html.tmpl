@@ -9,7 +9,7 @@
     <iframe name="hiddenFrame" width="0" height="0" border="0" style="display: none;"></iframe>
     <form action="/r" method="get" target="hiddenFrame">
         {{ range . }}
-        <input style="font-size: 20px;" type="submit" name="s" value="{{.Service}}" />
+        <input style="font-size: 20px;" type="submit" name="s" value="{{.Service.Name}}" />
         {{ end }}
     </form>
   </body>

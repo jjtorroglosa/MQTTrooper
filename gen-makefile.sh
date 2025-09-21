@@ -11,7 +11,6 @@ cat <<EOF
 #
 
 EOF
-GO_FLAGS='-ldflags "-s -w"'
 cat <<EOF
 .PHONY: all
 all: setup dist $(for i in "${oss[@]}"; do echo -n "$i "; done)
@@ -29,6 +28,7 @@ EOF
 done
 
 # Executables for all platforms and achitectures
+GO_FLAGS='-ldflags "-s -w"'
 for os in "${oss[@]}"; do
     for arch in "${archs[@]}"; do
         for cmd in "${cmds[@]}"; do

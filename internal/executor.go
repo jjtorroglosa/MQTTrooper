@@ -11,7 +11,7 @@ import (
 
 type Executor func(service string) error
 
-func CreateExecutor(dryRun bool, shell string, services ServicesMap) Executor {
+func CreateExecutor(dryRun bool, shell string, services map[string]string) Executor {
 	return func(service string) error {
 		commandToExecute, ok := services[service]
 		if !ok {
