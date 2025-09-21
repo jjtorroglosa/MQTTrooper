@@ -1,4 +1,5 @@
 config.yaml
-mqtt
 client
 *.plist
+build
+dist

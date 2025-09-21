@@ -1,29 +1,21 @@
+GO_MAKEFILE = build/go.mk
 
-.PHONY: mac linux all mqttrooper
-
-mac: dist dist/mqttrooper.amd64.darwin
-linux: dist dist/mqttrooper.amd64.linux
-
-all: mac linux
-
-mqttrooper: dist dist/mqttrooper.amd64.linux dist/mqttrooper.amd64.darwin
-
-LINUX = GOARCH=amd64 GOOS=linux go
-MAC = GOARCH=amd64 GOOS=darwin go
-MAIN_FILES = main.go mqtt.go http.go yaml.go executor.go
-
-dist/mqttrooper.amd64.darwin: $(MAIN_FILES)
-	$(MAC) build -ldflags "-s -w" -o $@ $^
-
-dist/mqttrooper.amd64.linux: $(MAIN_FILES)
-	$(LINUX) build -o $@ $^
+.PHONY: setup
+setup: $(GO_MAKEFILE)
+$(GO_MAKEFILE): gen-makefile.sh
+	mkdir -p build
+	./gen-makefile.sh > $(GO_MAKEFILE)
 
 dist:
 	mkdir -p dist
 
 clean:
 	rm -rf dist
+	rm -rf build
 
-deploy: linux
-	rsync -avz ./dist/ bell:services/mqttrooper/
-	rsync -avz ./templates/ bell:services/mqttrooper/templates/
+include $(GO_MAKEFILE)
+
+.PHONY: test
+test:
+	go test ${TEST_ARGS} ./...
+

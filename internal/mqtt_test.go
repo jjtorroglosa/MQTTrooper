@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"context"
@@ -31,6 +31,7 @@ type mqttTest struct {
 	any           *gofakeit.Faker
 	testContainer testcontainers.Container
 	teardown      func()
+	cfg           Config
 }
 
 func hash(s string) uint64 {
@@ -86,6 +87,16 @@ func setupMqttTest(t *testing.T, fixedHostPort *string) *mqttTest {
 			testcontainers.CleanupContainer(t, mqttC)
 			log.Println("Teardown finished")
 		},
+		cfg: Config{
+			Mqtt: MqttConfig{
+				Enabled: true,
+				Topic:   "/any/topic",
+			},
+			Executor: ExecutorConfig{
+				Shell:  "/bin/bash",
+				DryRun: false,
+			},
+		},
 	}
 }
 
@@ -97,7 +108,7 @@ func TestMqttSubscriptionsReceiveCommands(test *testing.T) {
 	defer os.Remove(filename)
 	serviceName := t.any.LetterN(8)
 	expectedString := t.any.LetterN(8)
-	cfg := getCfg()
+	cfg := t.cfg
 	cfg.Services = map[string]string{
 		serviceName: fmt.Sprintf("echo -n %s > %s", expectedString, filename),
 	}
@@ -111,12 +122,13 @@ func TestMqttSubscriptionsReceiveCommands(test *testing.T) {
 		received <- string(service)
 		return err
 	})
-	subscriber := connect(fmt.Sprintf("%s:%s", host, port), "subs", "subs", cfg.Mqtt.Topic, executor)
+	subscriber := Connect(fmt.Sprintf("%s:%s", host, port), "subs", "subs", "subs", cfg.Mqtt.Topic, executor)
 	assert.True(t, subscriber.IsConnected())
 	defer subscriber.Disconnect(250)
 
-	publisher := connect(
+	publisher := Connect(
 		fmt.Sprintf("%s:%s", host, port),
+		"pub",
 		"pub",
 		"pub",
 		cfg.Mqtt.Topic,
@@ -150,7 +162,7 @@ func TestWhenBrokerIsRestartedClientReconnects(test *testing.T) {
 	serviceName := t.any.LetterN(8)
 	expectedString := t.any.LetterN(8)
 
-	cfg := getCfg()
+	cfg := t.cfg
 	cfg.Services = map[string]string{
 		serviceName: fmt.Sprintf("echo -n %s > %s", expectedString, filename),
 	}
@@ -164,15 +176,16 @@ func TestWhenBrokerIsRestartedClientReconnects(test *testing.T) {
 		received <- string(service)
 		return err
 	})
-	subscriber := connect(fmt.Sprintf("%s:%s", host, port), "subs", "subs", cfg.Mqtt.Topic, executor)
+	subscriber := Connect(fmt.Sprintf("%s:%s", host, port), "subs", "subs", "subs", cfg.Mqtt.Topic, executor)
 	assert.True(t, subscriber.IsConnectionOpen())
 	defer subscriber.Disconnect(250)
 
 	restartContainer(t, subscriber)
 	assert.True(t, subscriber.IsConnectionOpen())
 
-	publisher := connect(
+	publisher := Connect(
 		fmt.Sprintf("%s:%s", host, port),
+		"pub",
 		"pub",
 		"pub",
 		cfg.Mqtt.Topic,
