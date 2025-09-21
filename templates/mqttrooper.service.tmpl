@@ -1,0 +1,10 @@
+[Unit]
+Description=Daemon to subscribe to a mqtt topic and spawn commands
+After={{.After}}
+[Service]
+WorkingDirectory={{.WorkingDirectory }}
+ExecStart={{.ExecutablePath}} -b {{.BindIpAddress}} -p {{.BindPort}} -c {{ .ConfigPath}}
+RestartSec=5
+Restart=always
+[Install]
+WantedBy=multi-user.target

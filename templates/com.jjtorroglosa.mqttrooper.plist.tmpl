@@ -6,14 +6,14 @@
     <string>com.jjtorroglosa.mqttrooper</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/juanjo/src/mqttrooper/dist/mqttrooper.amd64.darwin</string>
+            <string>{{ .ExecutablePath }}</string>
         <string>-c</string>
-        <string>/Users/juanjo/src/mqttrooper/config.yaml</string>
+            <string>{{ .ConfigPath }}</string>
     </array>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/Users/juanjo/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <string>{{ .Home }}/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
     <key>RunAtLoad</key>
     <true/>
@@ -25,16 +25,16 @@
       <true/>
     </dict>
     <key>StandardOutPath</key>
-    <string>/tmp/mqttrooper_juanjo.out.log</string>
+        <string>{{ .LogfilePath }}</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/mqttrooper_juanjo.err.log</string>
+        <string>{{ .ErrLogfilePath }}</string>
     <key>ProcessType</key>
     <string>Interactive</string>
     <key>Nice</key>
     <integer>-20</integer>
     <key>WatchPaths</key>
     <array>
-      <string>/Users/juanjo/src/mqttrooper/config.yaml</string>
+            <string>{{ .ConfigPath }}</string>
     </array>
 </dict>
 </plist>

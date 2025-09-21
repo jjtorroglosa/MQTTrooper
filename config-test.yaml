@@ -13,11 +13,14 @@ services:
   volume8: totalmixrelay -v 0.40
   volume9: totalmixrelay -v 0.45
   volume10: totalmixrelay -v 0.5
+  sleep: sleep 5
+  hello: echo hello
 http:
   enabled: true
 mqtt:
   enabled: true
   user: whatever
+  clientid: whatever
   pass: whatever
   address: tcp://127.0.0.1:1883
   topic: /mqttrooper/b

@@ -1,7 +1,6 @@
-package main
+package internal
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -15,14 +14,14 @@ type HttpConfig struct {
 	BindAddress    string
 }
 type MqttConfig struct {
-	Enabled bool
-	Address string
-	User    string
-	Pass    string
-	Topic   string
-	Payload string
-	Publish bool
+	Enabled  bool
+	Address  string
+	ClientID string
+	User     string
+	Pass     string
+	Topic    string
 }
+
 type ExecutorConfig struct {
 	Shell  string
 	DryRun bool
@@ -43,10 +42,10 @@ func openFile(file string) (string, error) {
 	return string(content), nil
 }
 
-func load(file string) Config {
+func LoadConfigFile(file string) Config {
 	data, err := openFile(file)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		os.Exit(1)
 	}
 	var cfg Config

@@ -1,7 +1,6 @@
-package main
+package internal
 
 import (
-	"flag"
 	"log"
 	"os"
 	"time"
@@ -12,9 +11,7 @@ import (
 const qos = 0
 const cleansess = false
 
-func connect(address string, user string, password string, topic string, execute Executor) mqtt.Client {
-	flag.Parse()
-
+func Connect(address string, clientId string, user string, password string, topic string, execute Executor) mqtt.Client {
 	mqtt.ERROR = log.New(os.Stdout, "[ERROR] ", 0)
 	mqtt.CRITICAL = log.New(os.Stdout, "[CRIT] ", 0)
 	mqtt.WARN = log.New(os.Stdout, "[WARN]  ", 0)
@@ -22,7 +19,7 @@ func connect(address string, user string, password string, topic string, execute
 
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(address)
-	opts.SetClientID(user)
+	opts.SetClientID(clientId)
 	opts.SetUsername(user)
 	opts.SetPassword(password)
 	opts.SetCleanSession(cleansess)
@@ -58,7 +55,7 @@ func connect(address string, user string, password string, topic string, execute
 	return client
 }
 
-func publish(client mqtt.Client, payload string, topic string) {
+func Publish(client mqtt.Client, payload string, topic string) {
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
