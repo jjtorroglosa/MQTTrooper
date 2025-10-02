@@ -1,0 +1,22 @@
+version: "2"
+run:
+  timeout: 5m
+  skip-dirs:
+    - build
+    - dist
+    - vendor
+linters:
+  enable:
+    - revive
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - errcheck
+  settings:
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+          exclude: [""]
+

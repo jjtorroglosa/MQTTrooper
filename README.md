@@ -11,7 +11,7 @@ MQTTrooper is a lightweight, flexible, and easy-to-use service that listens for 
 
 * [Features](#features)
 * [Getting Started](#getting-started)
-  * [Prerequisites](#prerequisites)
+  * [Requirements](#requirements)
   * [Installation](#installation)
   * [Configuration](#configuration)
     * [`executor`](#executor)
@@ -28,7 +28,7 @@ MQTTrooper is a lightweight, flexible, and easy-to-use service that listens for 
   * [MQTT API](#mqtt-api)
 * [Security](#security)
   * [HTTP Endpoint](#http-endpoint)
-  * [Command Injection](#command-injection)
+  * [Command Execution and Security](#command-execution-and-security)
   * [Principle of Least Privilege](#principle-of-least-privilege)
   * [Shell Configuration](#shell-configuration)
     * [Example: Using `rbash`](#example-using-rbash)
@@ -49,7 +49,7 @@ MQTTrooper is a lightweight, flexible, and easy-to-use service that listens for 
 
 ## Getting Started
 
-### Prerequisites
+### Requirements
 
 - [Go](https://golang.org/) (1.23 or later)
 - [Mosquitto](https://mosquitto.org/) or any other MQTT broker.
@@ -127,7 +127,7 @@ MQTTrooper can be run as a systemd service on Linux or a launchd service on macO
     ```bash
     ./mqttrooper dump-systemd-service > mqttrooper.service
     ```
-2.  Copy the service file to the systemd user directory:
+2.  Copy or link the service file to the systemd user directory:
     ```bash
     sudo ln -s $(pwd)/mqttrooper.service /etc/systemd/user/mqttrooper.service
     ```
@@ -177,6 +177,9 @@ Commands:
 
 ### HTTP API
 
+> [!WARNING]
+> This application doesn't implement any security for the http layer. Take a look to the security section
+
 When the HTTP interface is enabled, you can execute commands by making GET requests to the `/r` endpoint.
 
 - **URL**: `http://<bind_address>:<port>/r`
@@ -215,27 +218,39 @@ This will execute the `date` command defined in your `config.yaml`.
 
 ### HTTP Endpoint
 
-The HTTP endpoint is not secure and should not be exposed to the internet. It does not provide any authentication or encryption. It is recommended to use a reverse proxy with authentication and SSL/TLS encryption if you need to expose it to the internet.
+The HTTP endpoint is not secure and should not be exposed to the internet. It does not provide any
+authentication or encryption. It is recommended to use a reverse proxy with authentication and
+SSL/TLS encryption if you need to expose it to the internet.
 
 The only security measure is the `allowed_address` option, which restricts access to the specified IP address.
 
-### Command Injection
+### Command Execution and Security
 
-The commands defined in the `config.yaml` file are executed by the shell specified in the `executor.shell` option. If the service names are constructed from user input (e.g., from an MQTT message payload), a malicious user could craft a service name that executes arbitrary commands.
+By design, MQTTrooper executes the command strings defined in your `config.yaml` file using the
+shell specified in the `executor.shell` option. This allows for flexible and powerful commands.
 
-**It is crucial to ensure that the service names are not derived from untrusted sources.**
+User input (e.g., a service name from an MQTT message) is used only as a safe lookup key to find the
+corresponding command in your configuration. Arbitrary input will not be executed.
+
+The primary security consideration is that **any user with write access to your `config.yaml` file
+can define any command to be executed by the MQTTrooper service.** Therefore, it is crucial to
+restrict file permissions for `config.yaml` and to follow the Principle of Least Privilege, as detailed below.
 
 ### Principle of Least Privilege
 
-It is recommended to run the MQTTrooper service with a dedicated user with the minimum required privileges. Running the service as a privileged user (e.g., `root`) could allow a malicious user to gain control over the entire system.
+It is recommended to run the MQTTrooper service with a dedicated user with the minimum required
+privileges. Running the service as a privileged user (e.g., `root`) could allow a malicious user to
+gain control over the entire system.
 
 ### Shell Configuration
 
-The shell used to execute the commands should be as restrictive as possible. For example, you could use a restricted shell that only allows the execution of specific commands.
+The shell used to execute the commands should be as restrictive as possible. For example, you could
+use a restricted shell that only allows the execution of specific commands.
 
 #### Example: Using `rbash`
 
-`rbash` is a restricted version of the `bash` shell. When a user's shell is set to `rbash`, they can only execute commands that are in their `PATH` and cannot change their `PATH`.
+`rbash` is a restricted version of the `bash` shell. When a user's shell is set to `rbash`, they can
+only execute commands that are in their `PATH` and cannot change their `PATH`.
 
 To use `rbash` with MQTTrooper, you can do the following:
 
@@ -293,7 +308,8 @@ To use `rbash` with MQTTrooper, you can do the following:
 
 ## Development
 
-A `compose.yaml` file is provided for development. It sets up a Go container with the source code mounted and a Mosquitto container.
+A `compose.yaml` file is provided for development. It sets up a Go container with the source code
+mounted and a Mosquitto container.
 
 To start the development environment:
 
@@ -316,7 +332,8 @@ make
 make all
 ```
 
-This will create the `linux` and `darwin` (mac) binaries for `amd64` and `arm64` architectures: `dist/mqttrooper.$os.$arch`
+This will create the `linux` and `darwin` (mac) binaries for `amd64` and `arm64` architectures:
+`dist/mqttrooper.$os.$arch`
 
 ## Tests
 

@@ -13,7 +13,7 @@ cat <<EOF
 EOF
 cat <<EOF
 .PHONY: all
-all: setup dist $(for i in "${oss[@]}"; do echo -n "$i "; done)
+all: setup dist $(for i in "${oss[@]}"; do echo -n "$i "; done) ## Compile all OSs and archs binaries
 
 EOF
 
@@ -21,7 +21,7 @@ EOF
 for os in "${oss[@]}" ; do
 cat <<EOF
 .PHONY: $os
-$os: setup dist $(for arch in "${archs[@]}"; do for cmd in "${cmds[@]}"; do echo -n "dist/$cmd.$os.$arch "; done; done)
+$os: setup dist $(for arch in "${archs[@]}"; do for cmd in "${cmds[@]}"; do echo -n "dist/$cmd.$os.$arch "; done; done) ## Create $os binaries
 
 EOF
 
@@ -43,7 +43,7 @@ done
 
 cat <<EOF
 .PHONY: archive
-archive: all $(for os in "${oss[@]}"; do for arch in "${archs[@]}"; do echo -n "dist/mqttrooper.$os.$arch.tgz " ;done; done)
+archive: all $(for os in "${oss[@]}"; do for arch in "${archs[@]}"; do echo -n "dist/mqttrooper.$os.$arch.tgz " ;done; done) ## Create a tgz archive for all OSs and archs
 
 EOF
 

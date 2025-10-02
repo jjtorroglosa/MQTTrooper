@@ -23,14 +23,14 @@ func generatePlist(cfg *internal.Config) {
 		PathEnv        string
 		LogfilePath    string
 		ErrLogfilePath string
-		MacId          string
+		MacID          string
 	}{
 		ExecutablePath: exePath,
 		ConfigPath:     cfg.ConfigPath,
 		PathEnv:        cfg.Daemon.EnvPath,
 		LogfilePath:    cfg.Daemon.LogFilePath,
 		ErrLogfilePath: cfg.Daemon.ErrorFilePath,
-		MacId:          cfg.Daemon.MacId,
+		MacID:          cfg.Daemon.MacID,
 	})
 
 	if err != nil {

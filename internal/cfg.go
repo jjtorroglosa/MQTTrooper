@@ -3,6 +3,7 @@ package internal
 import (
 	"encoding/base64"
 	"flag"
+	"fmt"
 )
 
 func GetCfg() (*Config, error) {
@@ -42,6 +43,9 @@ func GetCfg() (*Config, error) {
 	}
 	validateMqttConfig(cfg.Mqtt)
 	csrfKey, err := base64.StdEncoding.DecodeString(cfg.Http.CsrfSecretBase64)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding csrf secret: %w", err)
+	}
 	cfg.Http.CsrfSecret = csrfKey
 
 	return cfg, nil

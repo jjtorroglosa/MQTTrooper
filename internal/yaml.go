@@ -45,7 +45,7 @@ type DaemonConfig struct {
 	EnvPath       string `yaml:"env_path"`
 	LogFilePath   string `yaml:"log_file_path"`
 	ErrorFilePath string `yaml:"error_file_path"`
-	MacId         string `yaml:"mac_id"`
+	MacID         string `yaml:"mac_id"`
 }
 
 type Config struct {
@@ -105,7 +105,7 @@ func LoadConfigFile(file string) (*Config, error) {
 			EnvPath:       "",
 			LogFilePath:   file,
 			ErrorFilePath: file,
-			MacId:         "com.jtorr.mqttrooper",
+			MacID:         "com.jtorr.mqttrooper",
 		},
 	}
 	err = yaml.Unmarshal([]byte(data), &cfg)
@@ -124,7 +124,7 @@ func LoadConfigFile(file string) (*Config, error) {
 	}
 	bytes, err := base64.StdEncoding.DecodeString(cfg.Http.CsrfSecretBase64)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading the csrf secret: %v", err)
+		return nil, fmt.Errorf("error reading the csrf secret: %v", err)
 	}
 	cfg.Http.CsrfSecret = bytes
 	sort.Slice(cfg.ServicesList, func(i, j int) bool {
