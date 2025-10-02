@@ -5,7 +5,10 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/jjtorroglosa/MQTTrooper)](https://goreportcard.com/report/github.com/jjtorroglosa/MQTTrooper)
 [![Last Commit](https://img.shields.io/github/last-commit/jjtorroglosa/MQTTrooper.svg)](https://github.com/jjtorroglosa/MQTTrooper/commits/main)
 
-MQTTrooper is a lightweight, flexible, and easy-to-use service that listens for commands via MQTT or HTTP and executes them on the host machine. It's designed to be a bridge between your IoT devices, home automation system, or any other service that can send MQTT messages or HTTP requests, and the scripts or commands you want to run on your server.
+MQTTrooper is a lightweight, flexible, and easy-to-use daemon that listens for commands via MQTT or
+HTTP and executes them on the host machine. It's designed to be a bridge between your IoT devices,
+home automation system, or any other service that can send MQTT messages or HTTP requests, and the
+scripts or commands you want to run on your server.
 
 <!-- mtoc-start -->
 
@@ -63,7 +66,7 @@ MQTTrooper is a lightweight, flexible, and easy-to-use service that listens for 
     ```
 2.  Build the project:
     ```bash
-    make
+    make setup
     make all
     ```
 3.  Copy the example configuration file:
