@@ -83,7 +83,7 @@ func (h _http) ExecuteHandler(
 			}
 			service := html.EscapeString(r.FormValue("s"))
 			if _, ok := h.cfg.Services[service]; !ok {
-				return errors.New("Unknown service")
+				return errors.New("unknown service")
 			}
 
 			err := execute(service)
@@ -91,7 +91,9 @@ func (h _http) ExecuteHandler(
 				log.Println(err)
 				return err
 			}
-			fmt.Fprintf(w, "{\"result\": \"ok\"}\n")
+			if _, err := fmt.Fprintf(w, "{\"result\": \"ok\"}\n"); err != nil {
+				return err
+			}
 
 			return nil
 		}()
@@ -134,18 +136,18 @@ func (h *_http) ListenHttp(cfg *HttpConfig, execute Executor) {
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-quit
-		log.Println("HTTP: Shutting down server...")
+		log.Println("Http: Shutting down server...")
 
 		// Context with timeout for graceful shutdown
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		if err := srv.Shutdown(ctx); err != nil {
-			log.Println("HTTP: Server forced to shutdown:", err)
+			log.Println("Http: Server forced to shutdown:", err)
 		} else {
-			log.Println("HTTP: Server exited gracefully")
+			log.Println("Http: Server exited gracefully")
 		}
 	}()
-	log.Printf("Listening on http://%s\n", addressPort)
+	log.Printf("Listening on Http://%s\n", addressPort)
 	log.Fatal(srv.ListenAndServe())
 }

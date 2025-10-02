@@ -40,7 +40,9 @@ daemon:
 `
 	tmpfile, err := os.CreateTemp("", "test.yaml")
 	assert.NoError(t, err)
-	defer os.Remove(tmpfile.Name())
+	defer func() {
+		_ = os.Remove(tmpfile.Name())
+	}()
 
 	_, err = tmpfile.WriteString(content)
 	assert.NoError(t, err)
@@ -84,7 +86,7 @@ daemon:
 
 	assert.Equal(t, "info_log_file", cfg.Daemon.LogFilePath)
 	assert.Equal(t, "error_log_file", cfg.Daemon.ErrorFilePath)
-	assert.Equal(t, "com.some.id", cfg.Daemon.MacId)
+	assert.Equal(t, "com.some.id", cfg.Daemon.MacID)
 }
 
 func TestLoadConfigFile_FileNotFound(t *testing.T) {
@@ -103,7 +105,9 @@ http:
 `
 	tmpfile, err := os.CreateTemp("", "test.yaml")
 	assert.NoError(t, err)
-	defer os.Remove(tmpfile.Name())
+	defer func() {
+		_ = os.Remove(tmpfile.Name())
+	}()
 
 	_, err = tmpfile.WriteString(content)
 	assert.NoError(t, err)
