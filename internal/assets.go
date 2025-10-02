@@ -1,3 +1,4 @@
+// Package internal contains the core logic of the application.
 package internal
 
 import "embed"

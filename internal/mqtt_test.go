@@ -104,8 +104,9 @@ func TestMqttSubscriptionsReceiveCommands(test *testing.T) {
 	t := setupMqttTest(test, nil)
 	defer t.teardown()
 	filename := fmt.Sprintf("/tmp/mqttrooper-test-%s", t.any.LetterN(8))
-	os.Remove(filename)
-	defer os.Remove(filename)
+	defer func() {
+		_ = os.Remove(filename)
+	}()
 	serviceName := t.any.LetterN(8)
 	expectedString := t.any.LetterN(8)
 	cfg := t.cfg

@@ -1,3 +1,4 @@
+// mqttrooper-publisher is a simple mqtt publisher for testing purposes.
 package main
 
 import (
@@ -17,7 +18,7 @@ func main() {
 
 	var payload = flag.String("message", "", "The message to publish")
 	var configFile = flag.String("c", "config.yaml", "The path to the config.yaml file")
-	var clientId = flag.String("clientid", "publisher", "The client id")
+	var clientID = flag.String("clientid", "publisher", "The client id")
 	flag.Parse()
 
 	var client mqtt.Client
@@ -26,7 +27,7 @@ func main() {
 		log.Fatalf("Error loading config file: %v", err)
 	}
 
-	cfg.Mqtt.ClientID = *clientId
+	cfg.Mqtt.ClientID = *clientID
 	client = internal.Connect(cfg.Mqtt.Address, cfg.Mqtt.ClientID, cfg.Mqtt.User, cfg.Mqtt.Pass, cfg.Mqtt.Topic, nil)
 
 	if *payload == "" {

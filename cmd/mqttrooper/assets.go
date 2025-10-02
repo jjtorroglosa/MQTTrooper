@@ -1,3 +1,4 @@
+// mqttrooper is the main package for the mqttrooper application.
 package main
 
 import "embed"
