@@ -1,3 +1,5 @@
+<div align="center">
+
 # MQTTrooper
 
 [![Go Version](https://img.shields.io/badge/go-1.23.1-blue.svg)](https://golang.org/)
@@ -5,11 +7,14 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/jjtorroglosa/MQTTrooper)](https://goreportcard.com/report/github.com/jjtorroglosa/MQTTrooper)
 [![Last Commit](https://img.shields.io/github/last-commit/jjtorroglosa/MQTTrooper.svg)](https://github.com/jjtorroglosa/MQTTrooper/commits/main)
 
-MQTTrooper is a lightweight, flexible, and easy-to-use daemon that listens for commands via MQTT or
-HTTP and executes them on the host machine. It's designed to be a bridge between your IoT devices,
-home automation system, or any other service that can send MQTT messages or HTTP requests, and the
-scripts or commands you want to run on your server.
+MQTTrooper is a lightweight, flexible, and easy-to-use daemon written in go that listens for
+commands via MQTT or HTTP and executes them on the host machine. It's designed to be a bridge
+between your IoT devices, home automation system, or any other service that can send MQTT messages
+or HTTP requests, and the scripts or commands you want to run on your server.
 
+</div>
+
+## Table of contents
 <!-- mtoc-start -->
 
 * [Features](#features)
@@ -26,7 +31,6 @@ scripts or commands you want to run on your server.
     * [Linux (systemd)](#linux-systemd)
     * [macOS (launchd)](#macos-launchd)
   * [Command-line interface](#command-line-interface)
-  * [Command-line options](#command-line-options)
   * [HTTP API](#http-api)
   * [MQTT API](#mqtt-api)
 * [Security](#security)
@@ -166,7 +170,7 @@ Commands:
   dump-systemd-service   Dump the systemd service file for Linux
 ```
 
-### Command-line options
+**Options**:
 
 | Flag        | Description                               | Default       |
 | ----------- | ----------------------------------------- | ------------- |
@@ -331,7 +335,7 @@ docker-compose exec dev bash
 To build the project, run:
 
 ```bash
-make
+make build
 make all
 ```
 
