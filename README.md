@@ -1,29 +1,40 @@
+<div align="center">
+
 # MQTTrooper
 
 [![Go Version](https://img.shields.io/badge/go-1.23.1-blue.svg)](https://golang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Report Card](https://goreportcard.com/badge/github.com/jjtorroglosa/MQTTrooper)](https://goreportcard.com/report/github.com/jjtorroglosa/MQTTrooper)
 [![Last Commit](https://img.shields.io/github/last-commit/jjtorroglosa/MQTTrooper.svg)](https://github.com/jjtorroglosa/MQTTrooper/commits/main)
+[![Status: Works on my machine](https://img.shields.io/badge/Status-It_Works_On_My_Machine-orange)](#)
 
-MQTTrooper is a lightweight, flexible, and easy-to-use service that listens for commands via MQTT or HTTP and executes them on the host machine. It's designed to be a bridge between your IoT devices, home automation system, or any other service that can send MQTT messages or HTTP requests, and the scripts or commands you want to run on your server.
+MQTTrooper is a lightweight, flexible, and easy-to-use daemon written in go that listens for
+commands via MQTT or HTTP and executes them on the host machine. It's designed to be a bridge
+between your IoT devices, home automation system, and the scripts or commands you want to run on
+your server.
 
+![diagram](docs/diagram.svg)
+
+</div>
+
+## Table of contents
 <!-- mtoc-start -->
 
 * [Features](#features)
+* [Dependencies](#dependencies)
 * [Getting Started](#getting-started)
   * [Requirements](#requirements)
   * [Installation](#installation)
+  * [Running as a service](#running-as-a-service)
+    * [Linux (systemd)](#linux-systemd)
+    * [macOS (launchd)](#macos-launchd)
   * [Configuration](#configuration)
     * [`executor`](#executor)
     * [`services`](#services)
     * [`http`](#http)
     * [`mqtt`](#mqtt)
 * [Usage](#usage)
-  * [Running as a service](#running-as-a-service)
-    * [Linux (systemd)](#linux-systemd)
-    * [macOS (launchd)](#macos-launchd)
   * [Command-line interface](#command-line-interface)
-  * [Command-line options](#command-line-options)
   * [HTTP API](#http-api)
   * [MQTT API](#mqtt-api)
 * [Security](#security)
@@ -47,6 +58,10 @@ MQTTrooper is a lightweight, flexible, and easy-to-use service that listens for 
 - **Dry Run Mode**: Test your configuration without executing any commands.
 - **Easy to Deploy**: Single binary with minimal dependencies.
 
+## Dependencies
+
+* [Eclipse Paho MQTT Go client](https://github.com/eclipse-paho/paho.mqtt.golang)
+
 ## Getting Started
 
 ### Requirements
@@ -63,7 +78,7 @@ MQTTrooper is a lightweight, flexible, and easy-to-use service that listens for 
     ```
 2.  Build the project:
     ```bash
-    make
+    make setup
     make all
     ```
 3.  Copy the example configuration file:
@@ -71,6 +86,41 @@ MQTTrooper is a lightweight, flexible, and easy-to-use service that listens for 
     cp examples/config.yaml.example config.yaml
     ```
 4.  Edit `config.yaml` to match your setup.
+
+### Running as a service
+
+MQTTrooper can be run as a systemd service on Linux or a launchd service on macOS.
+
+#### Linux (systemd)
+
+1.  Generate the systemd service file:
+    ```bash
+    ./mqttrooper dump-systemd-service > mqttrooper.service
+    ```
+2.  Copy or link the service file to the systemd user directory:
+    ```bash
+    sudo ln -s $(pwd)/mqttrooper.service /etc/systemd/user/mqttrooper.service
+    ```
+3.  Enable and start the service:
+    ```bash
+    systemctl --user enable mqttrooper
+    systemctl --user start mqttrooper
+    ```
+
+#### macOS (launchd)
+
+1.  Generate the launchd plist file:
+    ```bash
+    ./mqttrooper dump-plist > com.user.mqttrooper.plist
+    ```
+2.  Copy the plist file to the LaunchAgents directory:
+    ```bash
+    ln -s $(pwd)/com.user.mqttrooper.plist ~/Library/LaunchAgents/
+    ```
+3.  Load the service:
+    ```bash
+    launchctl load -w ~/Library/LaunchAgents/com.user.mqttrooper.plist
+    ```
 
 ### Configuration
 
@@ -117,40 +167,6 @@ services:
 
 ## Usage
 
-### Running as a service
-
-MQTTrooper can be run as a systemd service on Linux or a launchd service on macOS.
-
-#### Linux (systemd)
-
-1.  Generate the systemd service file:
-    ```bash
-    ./mqttrooper dump-systemd-service > mqttrooper.service
-    ```
-2.  Copy or link the service file to the systemd user directory:
-    ```bash
-    sudo ln -s $(pwd)/mqttrooper.service /etc/systemd/user/mqttrooper.service
-    ```
-3.  Enable and start the service:
-    ```bash
-    systemctl --user enable mqttrooper
-    systemctl --user start mqttrooper
-    ```
-
-#### macOS (launchd)
-
-1.  Generate the launchd plist file:
-    ```bash
-    ./mqttrooper dump-plist > com.user.mqttrooper.plist
-    ```
-2.  Copy the plist file to the LaunchAgents directory:
-    ```bash
-    ln -s $(pwd)/com.user.mqttrooper.plist ~/Library/LaunchAgents/
-    ```
-3.  Load the service:
-    ```bash
-    launchctl load ~/Library/LaunchAgents/com.user.mqttrooper.plist
-    ```
 
 ### Command-line interface
 
@@ -163,7 +179,7 @@ Commands:
   dump-systemd-service   Dump the systemd service file for Linux
 ```
 
-### Command-line options
+**Options**:
 
 | Flag        | Description                               | Default       |
 | ----------- | ----------------------------------------- | ------------- |
@@ -209,7 +225,7 @@ When the MQTT interface is enabled, MQTTrooper will subscribe to the specified t
 Using `mosquitto_pub`:
 
 ```bash
-mosquitto_pub -h 127.0.0.1 -t "/mqttrooper/commands" -m "date"
+mosquitto_pub -h 127.0.0.1 -t "/mqttrooper/your-hostname" -m "date"
 ```
 
 This will execute the `date` command defined in your `config.yaml`.
@@ -328,8 +344,16 @@ docker-compose exec dev bash
 To build the project, run:
 
 ```bash
-make
+make setup # generates build/go.mk
+
+# mac and linux
 make all
+
+# macosx
+make darwin
+
+# linux
+make linux
 ```
 
 This will create the `linux` and `darwin` (mac) binaries for `amd64` and `arm64` architectures:

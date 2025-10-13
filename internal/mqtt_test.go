@@ -56,9 +56,8 @@ func setupMqttTest(t *testing.T, fixedHostPort *string) *mqttTest {
 		},
 	}
 	if fixedHostPort != nil {
-		// Use fixed port on host instead of random (needed for example
-		// when testing reconnection so that it assigns the same port after restarting
-		// the container)
+		// Use fixed port on host instead of random (needed when testing reconnection
+		// so that it assigns the same port after restarting the container)
 		req.HostConfigModifier = func(hostConfig *container.HostConfig) {
 			hostConfig.PortBindings = nat.PortMap{
 				"1883/tcp": []nat.PortBinding{
