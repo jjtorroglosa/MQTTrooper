@@ -344,8 +344,16 @@ docker-compose exec dev bash
 To build the project, run:
 
 ```bash
-make build
+make setup # generates build/go.mk
+
+# mac and linux
 make all
+
+# macosx
+make darwin
+
+# linux
+make linux
 ```
 
 This will create the `linux` and `darwin` (mac) binaries for `amd64` and `arm64` architectures:
