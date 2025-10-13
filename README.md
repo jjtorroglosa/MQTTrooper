@@ -10,8 +10,8 @@
 
 MQTTrooper is a lightweight, flexible, and easy-to-use daemon written in go that listens for
 commands via MQTT or HTTP and executes them on the host machine. It's designed to be a bridge
-between your IoT devices, home automation system, or any other service that can send MQTT messages
-or HTTP requests, and the scripts or commands you want to run on your server.
+between your IoT devices, home automation system, and the scripts or commands you want to run on
+your server.
 
 ![diagram](docs/diagram.svg)
 
