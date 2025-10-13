@@ -5,7 +5,7 @@
 [![Go Version](https://img.shields.io/badge/go-1.23.1-blue.svg)](https://golang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Report Card](https://goreportcard.com/badge/github.com/jjtorroglosa/MQTTrooper)](https://goreportcard.com/report/github.com/jjtorroglosa/MQTTrooper)
-[![Last Commit](https://img.shields.io/github/last-commit/jjtorroglosa/MQTTrooper.svg)](https://github.com/jjtorroglosa/MQTTrooper/commits/main)
+[![Last Commit](https://img.shields.io/github/last-commit/jjtorroglosa/MQTTrooper.svg)](https://github.com/jjtorroglosa/MQTTrooper/commits/master)
 [![Status: Works on my machine](https://img.shields.io/badge/Status-It_Works_On_My_Machine-orange)](#)
 
 MQTTrooper is a lightweight, flexible, and easy-to-use daemon written in go that listens for

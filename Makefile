@@ -24,4 +24,5 @@ help: ## print this help
 	@grep --no-filename -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 lint:
+	docker run -v "./:/src" zricethezav/gitleaks:latest git "/src" -c /src/gitleaks.toml --report-path "/src/report.json"
 	golangci-lint run -c .golangci.yml

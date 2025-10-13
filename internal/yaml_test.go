@@ -15,7 +15,7 @@ http:
   port: 8080
   allowed_address: "127.0.0.1"
   bind_address: "0.0.0.0"
-  csrf_secret: "***REMOVED***="
+  csrf_secret: "any_csrf_secret"
 mqtt:
   enabled: true
   address: "tcp://127.0.0.1:1883"

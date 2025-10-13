@@ -11,7 +11,7 @@ import (
 const qos = 0
 const cleansess = false
 
-// Connect connects to the MQTT broker.
+// Connects to the MQTT broker.
 func Connect(address string, clientId string, user string, password string, topic string, execute Executor) mqtt.Client {
 	mqtt.ERROR = log.New(os.Stdout, "[ERROR] ", 0)
 	mqtt.CRITICAL = log.New(os.Stdout, "[CRIT] ", 0)
@@ -61,7 +61,7 @@ func Connect(address string, clientId string, user string, password string, topi
 	return client
 }
 
-// Publish publishes a message to the MQTT broker.
+// Publishes a message to the MQTT broker.
 func Publish(client mqtt.Client, payload string, topic string) {
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
