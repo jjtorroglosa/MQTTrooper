@@ -21,6 +21,7 @@ or HTTP requests, and the scripts or commands you want to run on your server.
 <!-- mtoc-start -->
 
 * [Features](#features)
+* [Dependencies](#dependencies)
 * [Getting Started](#getting-started)
   * [Requirements](#requirements)
   * [Installation](#installation)
@@ -56,6 +57,10 @@ or HTTP requests, and the scripts or commands you want to run on your server.
 - **Service Management**: Run as a systemd service on Linux or a launchd service on macOS.
 - **Dry Run Mode**: Test your configuration without executing any commands.
 - **Easy to Deploy**: Single binary with minimal dependencies.
+
+## Dependencies
+
+* [Eclipse Paho MQTT Go client](https://github.com/eclipse-paho/paho.mqtt.golang)
 
 ## Getting Started
 
@@ -114,7 +119,7 @@ MQTTrooper can be run as a systemd service on Linux or a launchd service on macO
     ```
 3.  Load the service:
     ```bash
-    launchctl load ~/Library/LaunchAgents/com.user.mqttrooper.plist
+    launchctl load -w ~/Library/LaunchAgents/com.user.mqttrooper.plist
     ```
 
 ### Configuration
