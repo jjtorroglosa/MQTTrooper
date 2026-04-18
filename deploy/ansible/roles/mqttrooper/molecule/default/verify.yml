@@ -57,19 +57,19 @@
         search_regex: "Listening messages"
         timeout: 20
 
-    - name: Publish service-trigger message over MQTT
-      ansible.builtin.command: >-
-        mosquitto_pub
-        -h 127.0.0.1 -p 1883
-        -u {{ mqttrooper_mqtt_test_user }} -P {{ mqttrooper_mqtt_test_pass }}
-        -t {{ mqttrooper_mqtt_test_topic }}
-        -m {{ mqttrooper_mqtt_test_service }}
+    - name: Publish service-trigger message over MQTT (retry until executor fires)
+      ansible.builtin.shell: |
+        set -e
+        mosquitto_pub -h 127.0.0.1 -p 1883 \
+          -u {{ mqttrooper_mqtt_test_user }} -P {{ mqttrooper_mqtt_test_pass }} \
+          -t {{ mqttrooper_mqtt_test_topic }} \
+          -m {{ mqttrooper_mqtt_test_service }}
+        for i in $(seq 1 15); do
+          [ -f {{ mqttrooper_mqtt_sentinel_path }} ] && exit 0
+          sleep 1
+        done
+        exit 1
       changed_when: true
-
-    - name: Wait for sentinel file created by executor
-      ansible.builtin.wait_for:
-        path: "{{ mqttrooper_mqtt_sentinel_path }}"
-        timeout: 15
 
     - name: Read sentinel contents
       ansible.builtin.slurp:

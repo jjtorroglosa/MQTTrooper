@@ -10,6 +10,8 @@ Group={{ mqttrooper_group }}
 WorkingDirectory={{ mqttrooper_working_dir }}
 ExecStart={{ mqttrooper_install_dir }}/mqttrooper -c {{ mqttrooper_config_path }}
 Environment=PATH={{ mqttrooper_env_path }}
+StandardOutput=append:{{ mqttrooper_config.daemon.log_file_path }}
+StandardError=append:{{ mqttrooper_config.daemon.error_file_path }}
 Restart=always
 RestartSec=5
 NoNewPrivileges=true
