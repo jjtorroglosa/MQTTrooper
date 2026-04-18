@@ -149,3 +149,86 @@ func TestPublishDiscoveryEmitsButtonConfigPerService(test *testing.T) {
 		}
 	}
 }
+
+func TestPublishDiscoveryClearsStaleEntries(test *testing.T) {
+	t := setupMqttTest(test, nil)
+	defer t.teardown()
+
+	host, _ := t.testContainer.Host(t.ctx)
+	port, _ := t.testContainer.MappedPort(t.ctx, "1883/tcp")
+	address := fmt.Sprintf("%s:%s", host, port)
+
+	cfg := &Config{
+		Mqtt: MqttConfig{
+			Enabled: true,
+			Topic:   "/mqttrooper/test",
+			Discovery: DiscoveryConfig{
+				Enabled:      true,
+				Prefix:       "homeassistant",
+				DevicePrefix: "mqttrooper_cleanup",
+				DeviceName:   "mqttrooper cleanup",
+			},
+		},
+		ServicesList: ServicesList{
+			{Name: "kept", Command: "echo kept"},
+		},
+	}
+
+	// Seed a stale retained discovery message for a service that is no
+	// longer in the config, plus one sibling the cleanup should preserve
+	// (the broker will replay both, but only "gone" should be cleared).
+	seed := func(t *testing.T, service string, payload []byte) {
+		opts := mqtt.NewClientOptions().AddBroker(address).SetClientID("seed-" + service).SetCleanSession(true)
+		c := mqtt.NewClient(opts)
+		if tok := c.Connect(); tok.WaitTimeout(3*time.Second) && tok.Error() != nil {
+			t.Fatal(tok.Error())
+		}
+		defer c.Disconnect(250)
+		topic := fmt.Sprintf("homeassistant/button/mqttrooper_cleanup/%s/config", service)
+		tok := c.Publish(topic, byte(qos), true, payload)
+		tok.Wait()
+		assert.NoError(t, tok.Error())
+	}
+	seed(test, "gone", []byte(`{"name":"gone","command_topic":"/x","payload_press":"gone"}`))
+	seed(test, "kept", []byte(`{"name":"kept","command_topic":"/x","payload_press":"kept"}`))
+
+	// Run PublishDiscovery (which should clear "gone" and re-publish "kept").
+	pubOpts := mqtt.NewClientOptions().AddBroker(address).SetClientID("disc-run").SetCleanSession(true)
+	pub := mqtt.NewClient(pubOpts)
+	if tok := pub.Connect(); tok.WaitTimeout(3*time.Second) && tok.Error() != nil {
+		t.Fatal(tok.Error())
+	}
+	defer pub.Disconnect(250)
+
+	assert.NoError(t, PublishDiscovery(pub, cfg))
+
+	// Fresh subscriber: broker replays only retained messages that still
+	// exist. We expect exactly "kept" and NOT "gone".
+	got := map[string][]byte{}
+	var mu sync.Mutex
+	subOpts := mqtt.NewClientOptions().
+		AddBroker(address).
+		SetClientID("post-cleanup-sub").
+		SetCleanSession(true).
+		SetOnConnectHandler(func(c mqtt.Client) {
+			c.Subscribe("homeassistant/button/mqttrooper_cleanup/+/config", 0, func(_ mqtt.Client, m mqtt.Message) {
+				mu.Lock()
+				got[m.Topic()] = m.Payload()
+				mu.Unlock()
+			})
+		})
+	sub := mqtt.NewClient(subOpts)
+	if tok := sub.Connect(); tok.WaitTimeout(3*time.Second) && tok.Error() != nil {
+		t.Fatal(tok.Error())
+	}
+	defer sub.Disconnect(250)
+
+	time.Sleep(700 * time.Millisecond)
+
+	mu.Lock()
+	defer mu.Unlock()
+	_, keptOk := got["homeassistant/button/mqttrooper_cleanup/kept/config"]
+	assert.True(t, keptOk, "kept entity should remain after cleanup")
+	_, goneOk := got["homeassistant/button/mqttrooper_cleanup/gone/config"]
+	assert.False(t, goneOk, "gone entity should be cleared (no retained message replayed)")
+}
