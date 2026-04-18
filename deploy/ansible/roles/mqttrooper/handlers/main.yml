@@ -1,0 +1,9 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart mqttrooper
+  ansible.builtin.systemd:
+    name: mqttrooper
+    state: restarted

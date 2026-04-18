@@ -1,0 +1,108 @@
+---
+- name: Prepare binary on control node
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Resolve binary path (MQTTROOPER_BIN or built default)
+      ansible.builtin.set_fact:
+        mqttrooper_test_bin: >-
+          {{ lookup('env', 'MQTTROOPER_BIN')
+             | default(playbook_dir ~ '/../../../../../../build/mqttrooper', true) }}
+
+    - name: Assert the test binary exists
+      ansible.builtin.stat:
+        path: "{{ mqttrooper_test_bin }}"
+      register: mqttrooper_bin_stat
+
+    - name: Fail if binary is missing
+      ansible.builtin.assert:
+        that: mqttrooper_bin_stat.stat.exists
+        fail_msg: >-
+          Binary not found at {{ mqttrooper_test_bin }}.
+          Build it first (GOOS=linux GOARCH=amd64 go build -o build/mqttrooper ./cmd/mqttrooper)
+          or set MQTTROOPER_BIN.
+
+- name: Converge
+  hosts: all
+  vars:
+    mqttrooper_mqtt_test_user: testuser
+    mqttrooper_mqtt_test_pass: testpass
+    mqttrooper_mqtt_test_topic: /mqttrooper/test
+    mqttrooper_mqtt_test_service: hello
+    mqttrooper_mqtt_sentinel_path: /var/lib/mqttrooper/mqtt-fired
+  pre_tasks:
+    - name: Install mosquitto broker and clients
+      ansible.builtin.apt:
+        name:
+          - mosquitto
+          - mosquitto-clients
+        state: present
+        update_cache: true
+
+    - name: Check whether mosquitto password file exists
+      ansible.builtin.stat:
+        path: /etc/mosquitto/passwd
+      register: mqttrooper_mosquitto_passwd_stat
+
+    - name: Write mosquitto password file (plaintext, first run only)
+      ansible.builtin.copy:
+        dest: /etc/mosquitto/passwd
+        content: "{{ mqttrooper_mqtt_test_user }}:{{ mqttrooper_mqtt_test_pass }}\n"
+        owner: root
+        group: mosquitto
+        mode: "0640"
+      when: not mqttrooper_mosquitto_passwd_stat.stat.exists
+
+    - name: Hash mosquitto password file (first run only)
+      ansible.builtin.command: mosquitto_passwd -U /etc/mosquitto/passwd
+      when: not mqttrooper_mosquitto_passwd_stat.stat.exists
+      changed_when: true
+
+    - name: Configure mosquitto listener
+      ansible.builtin.copy:
+        dest: /etc/mosquitto/conf.d/molecule.conf
+        content: |
+          listener 1883 127.0.0.1
+          allow_anonymous false
+          password_file /etc/mosquitto/passwd
+          persistence false
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Enable and start mosquitto
+      ansible.builtin.systemd:
+        name: mosquitto
+        enabled: true
+        state: started
+
+  roles:
+    - role: mqttrooper
+      vars:
+        mqttrooper_binary_src: "{{ hostvars['localhost'].mqttrooper_test_bin }}"
+        mqttrooper_service_state: started
+        mqttrooper_config:
+          executor:
+            shell: /bin/sh
+            dry_run: false
+          services:
+            hello: "echo fired > /var/lib/mqttrooper/mqtt-fired"
+          http:
+            enabled: false
+            port: 8080
+            bind_address: 127.0.0.1
+            allowed_address: 127.0.0.1
+            csrf_secret: ""
+          mqtt:
+            enabled: true
+            address: tcp://127.0.0.1:1883
+            client_id: mqttrooper-molecule
+            user: "{{ mqttrooper_mqtt_test_user }}"
+            pass: "{{ mqttrooper_mqtt_test_pass }}"
+            topic: "{{ mqttrooper_mqtt_test_topic }}"
+            connection_timeout_seconds: 5
+          daemon:
+            cwd: "{{ mqttrooper_working_dir }}"
+            env_path: "{{ mqttrooper_env_path }}"
+            log_file_path: "{{ mqttrooper_log_dir }}/mqttrooper.log"
+            error_file_path: "{{ mqttrooper_log_dir }}/mqttrooper.error.log"

@@ -99,7 +99,7 @@ MQTTrooper can be run as a systemd service on Linux or a launchd service on macO
     ```
 2.  Copy or link the service file to the systemd user directory:
     ```bash
-    sudo ln -s $(pwd)/mqttrooper.service /etc/systemd/user/mqttrooper.service
+    systemctl --user link $(pwd)/mqttrooper.service
     ```
 3.  Enable and start the service:
     ```bash
@@ -115,11 +115,11 @@ MQTTrooper can be run as a systemd service on Linux or a launchd service on macO
     ```
 2.  Copy the plist file to the LaunchAgents directory:
     ```bash
-    ln -s $(pwd)/com.user.mqttrooper.plist ~/Library/LaunchAgents/
+    ln -s $(pwd)/com.YOUR_USER.mqttrooper.plist ~/Library/LaunchAgents/
     ```
 3.  Load the service:
     ```bash
-    launchctl load -w ~/Library/LaunchAgents/com.user.mqttrooper.plist
+    launchctl load -w ~/Library/LaunchAgents/com.YOUR_USER.mqttrooper.plist
     ```
 
 ### Configuration

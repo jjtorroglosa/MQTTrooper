@@ -1,0 +1,30 @@
+---
+- name: Deploy mqttrooper
+  hosts: mqttrooper_hosts
+  become: true
+  roles:
+    - role: mqttrooper
+      vars:
+        # Path is relative to this playbook file.
+        mqttrooper_binary_src: "{{ playbook_dir }}/../../dist/mqttrooper.linux.amd64"
+        mqttrooper_config:
+          executor:
+            shell: /usr/bin/env bash
+            dry_run: false
+          services:
+            date: "date"
+          mqtt:
+            enabled: true
+            address: tcp://broker.lan:1883
+            client_id: mqttrooper
+            user: mqttuser
+            pass: mqttpass
+            topic: "/mqttrooper/{{ inventory_hostname }}"
+            connection_timeout_seconds: 5
+          http:
+            enabled: false
+          daemon:
+            cwd: /var/lib/mqttrooper
+            env_path: /usr/local/bin:/usr/bin:/bin
+            log_file_path: /var/log/mqttrooper/mqttrooper.log
+            error_file_path: /var/log/mqttrooper/mqttrooper.error.log

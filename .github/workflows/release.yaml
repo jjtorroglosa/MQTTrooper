@@ -1,16 +1,66 @@
-
 name: Release
 on:
   push:
     tags:
       - 'v*'
+
+permissions:
+  contents: write
+
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Release
-        run: gh release create ${{ github.ref_name }} --generate-notes
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build linux and darwin binaries
+        run: make setup linux darwin
+
+      - name: Package ansible role
+        run: |
+          mkdir -p dist
+          tar -czf "dist/mqttrooper-ansible-role-${GITHUB_REF_NAME}.tar.gz" \
+            -C deploy/ansible/roles mqttrooper
+
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum mqttrooper.*.* mqttrooper-ansible-role-*.tar.gz > SHA256SUMS
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Create GitHub release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            dist/mqttrooper.linux.amd64 \
+            dist/mqttrooper.linux.arm64 \
+            dist/mqttrooper.darwin.amd64 \
+            dist/mqttrooper.darwin.arm64 \
+            dist/mqttrooper-ansible-role-${GITHUB_REF_NAME}.tar.gz \
+            dist/SHA256SUMS
