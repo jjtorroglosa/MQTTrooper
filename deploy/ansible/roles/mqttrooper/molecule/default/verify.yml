@@ -2,36 +2,36 @@
 - name: Verify
   hosts: all
   vars:
-    mqtt_test_user: testuser
-    mqtt_test_pass: testpass
-    mqtt_test_topic: /mqttrooper/test
-    mqtt_test_service: hello
-    mqtt_sentinel_path: /var/lib/mqttrooper/mqtt-fired
+    mqttrooper_mqtt_test_user: testuser
+    mqttrooper_mqtt_test_pass: testpass
+    mqttrooper_mqtt_test_topic: /mqttrooper/test
+    mqttrooper_mqtt_test_service: hello
+    mqttrooper_mqtt_sentinel_path: /var/lib/mqttrooper/mqtt-fired
   tasks:
     - name: Stat the installed binary
       ansible.builtin.stat:
         path: /usr/local/bin/mqttrooper
-      register: bin_stat
+      register: mqttrooper_bin_stat
 
     - name: Binary is present and executable
       ansible.builtin.assert:
         that:
-          - bin_stat.stat.exists
-          - bin_stat.stat.mode == "0755"
+          - mqttrooper_bin_stat.stat.exists
+          - mqttrooper_bin_stat.stat.mode == "0755"
 
     - name: Config file has expected ownership and mode
       ansible.builtin.stat:
         path: /etc/mqttrooper/config.yaml
-      register: cfg_stat
+      register: mqttrooper_cfg_stat
 
     - name: Assert config metadata
       ansible.builtin.assert:
         that:
-          - cfg_stat.stat.exists
-          - cfg_stat.stat.mode == "0640"
-          - cfg_stat.stat.gr_name == "mqttrooper"
+          - mqttrooper_cfg_stat.stat.exists
+          - mqttrooper_cfg_stat.stat.mode == "0640"
+          - mqttrooper_cfg_stat.stat.gr_name == "mqttrooper"
 
-    - name: mqttrooper user exists
+    - name: Mqttrooper user exists
       ansible.builtin.getent:
         database: passwd
         key: mqttrooper
@@ -39,7 +39,7 @@
     - name: Gather service facts
       ansible.builtin.service_facts:
 
-    - name: mqttrooper service is enabled and running
+    - name: Mqttrooper service is enabled and running
       ansible.builtin.assert:
         that:
           - "'mqttrooper.service' in ansible_facts.services"
@@ -48,7 +48,7 @@
 
     - name: Remove stale sentinel if present
       ansible.builtin.file:
-        path: "{{ mqtt_sentinel_path }}"
+        path: "{{ mqttrooper_mqtt_sentinel_path }}"
         state: absent
 
     - name: Wait for mqttrooper to subscribe (log contains 'Listening messages')
@@ -61,22 +61,22 @@
       ansible.builtin.command: >-
         mosquitto_pub
         -h 127.0.0.1 -p 1883
-        -u {{ mqtt_test_user }} -P {{ mqtt_test_pass }}
-        -t {{ mqtt_test_topic }}
-        -m {{ mqtt_test_service }}
+        -u {{ mqttrooper_mqtt_test_user }} -P {{ mqttrooper_mqtt_test_pass }}
+        -t {{ mqttrooper_mqtt_test_topic }}
+        -m {{ mqttrooper_mqtt_test_service }}
       changed_when: true
 
     - name: Wait for sentinel file created by executor
       ansible.builtin.wait_for:
-        path: "{{ mqtt_sentinel_path }}"
+        path: "{{ mqttrooper_mqtt_sentinel_path }}"
         timeout: 15
 
     - name: Read sentinel contents
       ansible.builtin.slurp:
-        src: "{{ mqtt_sentinel_path }}"
-      register: sentinel
+        src: "{{ mqttrooper_mqtt_sentinel_path }}"
+      register: mqttrooper_sentinel
 
     - name: Sentinel content matches
       ansible.builtin.assert:
         that:
-          - (sentinel.content | b64decode).strip() == 'fired'
+          - (mqttrooper_sentinel.content | b64decode).strip() == 'fired'

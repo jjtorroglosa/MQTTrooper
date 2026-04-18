@@ -55,7 +55,7 @@
     group: root
     mode: "0755"
   when: mqttrooper_binary_src is match('^https?://')
-  notify: restart mqttrooper
+  notify: Restart mqttrooper
 
 - name: Install mqttrooper binary (from control node)
   ansible.builtin.copy:
@@ -65,7 +65,7 @@
     group: root
     mode: "0755"
   when: mqttrooper_binary_src is not match('^https?://')
-  notify: restart mqttrooper
+  notify: Restart mqttrooper
 
 - name: Render mqttrooper config
   ansible.builtin.template:
@@ -74,7 +74,7 @@
     owner: root
     group: "{{ mqttrooper_group }}"
     mode: "0640"
-  notify: restart mqttrooper
+  notify: Restart mqttrooper
 
 - name: Install systemd unit
   ansible.builtin.template:
@@ -84,8 +84,8 @@
     group: root
     mode: "0644"
   notify:
-    - reload systemd
-    - restart mqttrooper
+    - Reload systemd
+    - Restart mqttrooper
 
 - name: Enable and start mqttrooper
   ansible.builtin.systemd:
