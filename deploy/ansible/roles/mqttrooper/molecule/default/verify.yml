@@ -51,9 +51,9 @@
         path: "{{ mqttrooper_mqtt_sentinel_path }}"
         state: absent
 
-    - name: Wait for mqttrooper to subscribe (log contains 'Listening messages')
+    - name: Wait for mqttrooper to subscribe (stderr log contains 'Listening messages')
       ansible.builtin.wait_for:
-        path: /var/log/mqttrooper/mqttrooper.log
+        path: /var/log/mqttrooper/mqttrooper.error.log
         search_regex: "Listening messages"
         timeout: 20
 
