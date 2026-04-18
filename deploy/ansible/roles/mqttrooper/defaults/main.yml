@@ -58,11 +58,16 @@ mqttrooper_config:
   mqtt:
     enabled: false
     address: tcp://broker:1883
-    client_id: mqttrooper
+    client_id: "mqttrooper_{{ inventory_hostname }}"
     user: ""
     pass: ""
-    topic: /mqttrooper/host
+    topic: "/mqttrooper/{{ inventory_hostname }}"
     connection_timeout_seconds: 5
+    discovery:
+      enabled: false
+      prefix: homeassistant
+      device_prefix: "mqttrooper_{{ inventory_hostname }}"
+      device_name: "mqttrooper {{ inventory_hostname }}"
   daemon:
     cwd: "{{ mqttrooper_working_dir }}"
     env_path: "{{ mqttrooper_env_path }}"
