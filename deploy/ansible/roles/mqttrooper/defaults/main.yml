@@ -1,0 +1,70 @@
+---
+# Release tag to download from GitHub (e.g. "v1.2.3"). Must be an existing tag
+# with published release assets. Override per-host/group as needed.
+mqttrooper_version: "v0.1.0"
+
+# GitHub repo that publishes the release assets.
+mqttrooper_github_repo: "jjtorroglosa/mqttrooper"
+
+# Map ansible_system + ansible_architecture to the release asset suffix.
+# Release assets are named: mqttrooper.<os>.<arch>
+mqttrooper_os_map:
+  Linux: linux
+  Darwin: darwin
+mqttrooper_arch_map:
+  x86_64: amd64
+  amd64: amd64
+  aarch64: arm64
+  arm64: arm64
+
+mqttrooper_asset_os: "{{ mqttrooper_os_map[ansible_system] }}"
+mqttrooper_asset_arch: "{{ mqttrooper_arch_map[ansible_architecture] }}"
+mqttrooper_asset_name: "mqttrooper.{{ mqttrooper_asset_os }}.{{ mqttrooper_asset_arch }}"
+
+# URL (http/https) or local path on the control node to the prebuilt binary.
+# Defaults to the GitHub release asset for the target host's OS/arch.
+mqttrooper_binary_src: "https://github.com/{{ mqttrooper_github_repo }}/releases/download/{{ mqttrooper_version }}/{{ mqttrooper_asset_name }}"
+
+# Optional, strongly recommended when downloading over HTTP.
+# Format accepted by ansible.builtin.get_url, e.g. "sha256:<hex>".
+mqttrooper_binary_checksum: ""
+
+mqttrooper_user: mqttrooper
+mqttrooper_group: mqttrooper
+
+mqttrooper_install_dir: /usr/local/bin
+mqttrooper_config_dir: /etc/mqttrooper
+mqttrooper_config_path: "{{ mqttrooper_config_dir }}/config.yaml"
+mqttrooper_log_dir: /var/log/mqttrooper
+mqttrooper_working_dir: /var/lib/mqttrooper
+
+mqttrooper_env_path: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+mqttrooper_service_enabled: true
+mqttrooper_service_state: started
+
+# Dict rendered verbatim as /etc/mqttrooper/config.yaml.
+# Override in inventory/group_vars. Keep mqtt.enabled or http.enabled true.
+mqttrooper_config:
+  executor:
+    shell: /usr/bin/env bash
+    dry_run: false
+  services: {}
+  http:
+    enabled: false
+    port: 8080
+    bind_address: 127.0.0.1
+    allowed_address: 127.0.0.1
+  mqtt:
+    enabled: false
+    address: tcp://broker:1883
+    client_id: mqttrooper
+    user: ""
+    pass: ""
+    topic: /mqttrooper/host
+    connection_timeout_seconds: 5
+  daemon:
+    cwd: "{{ mqttrooper_working_dir }}"
+    env_path: "{{ mqttrooper_env_path }}"
+    log_file_path: "{{ mqttrooper_log_dir }}/mqttrooper.log"
+    error_file_path: "{{ mqttrooper_log_dir }}/mqttrooper.error.log"
