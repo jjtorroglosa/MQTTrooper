@@ -86,7 +86,7 @@
             shell: /bin/sh
             dry_run: false
           services:
-            "{{ mqttrooper_mqtt_test_service }}": "echo fired > {{ mqttrooper_mqtt_sentinel_path }}"
+            hello: "echo fired > /var/lib/mqttrooper/mqtt-fired"
           http:
             enabled: false
             port: 8080
