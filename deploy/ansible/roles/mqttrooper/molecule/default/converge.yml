@@ -39,16 +39,23 @@
         state: present
         update_cache: true
 
-    - name: Write mosquitto password file
+    - name: Check whether mosquitto password file exists
+      ansible.builtin.stat:
+        path: /etc/mosquitto/passwd
+      register: mqttrooper_mosquitto_passwd_stat
+
+    - name: Write mosquitto password file (plaintext, first run only)
       ansible.builtin.copy:
         dest: /etc/mosquitto/passwd
         content: "{{ mqttrooper_mqtt_test_user }}:{{ mqttrooper_mqtt_test_pass }}\n"
         owner: root
         group: mosquitto
         mode: "0640"
+      when: not mqttrooper_mosquitto_passwd_stat.stat.exists
 
-    - name: Hash mosquitto password file
+    - name: Hash mosquitto password file (first run only)
       ansible.builtin.command: mosquitto_passwd -U /etc/mosquitto/passwd
+      when: not mqttrooper_mosquitto_passwd_stat.stat.exists
       changed_when: true
 
     - name: Configure mosquitto listener
