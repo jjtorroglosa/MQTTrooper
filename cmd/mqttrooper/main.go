@@ -63,6 +63,13 @@ func serve(cfg *internal.Config) {
 	var client mqtt.Client
 	if cfg.Mqtt.Enabled {
 		client = internal.Connect(cfg.Mqtt.Address, cfg.Mqtt.ClientID, cfg.Mqtt.User, cfg.Mqtt.Pass, cfg.Mqtt.Topic, execute)
+		if cfg.Mqtt.Discovery.Enabled {
+			if err := internal.PublishDiscovery(client, cfg); err != nil {
+				log.Printf("Discovery publish error: %v", err)
+			}
+		}
+	} else if cfg.Mqtt.Discovery.Enabled {
+		log.Println("mqtt.discovery.enabled=true but mqtt.enabled=false; skipping discovery")
 	}
 	log.Println("Connected to mqtt")
 

@@ -21,6 +21,11 @@
             pass: mqttpass
             topic: "/mqttrooper/{{ inventory_hostname }}"
             connection_timeout_seconds: 5
+            discovery:
+              enabled: true
+              prefix: homeassistant
+              device_prefix: "mqttrooper_{{ inventory_hostname }}"
+              device_name: "mqttrooper {{ inventory_hostname }}"
           http:
             enabled: false
           daemon:

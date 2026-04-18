@@ -1,12 +1,47 @@
 executor:
   shell: /usr/bin/env bash
+  dry_run: false
+
 services:
   snapserver: "sudo systemctl restart snapserver.service"
   snapclient: "systemctl --user restart snapclient.service"
   spotifyd:   "systemctl --user restart spotifyd.service"
-  date: "ls && asdf"
+  date:       "date"
+
 mqtt:
+  enabled: true
+  address: tcp://broker.lan:1883
+  client_id: mqttrooper
   user: yourmqttuser
   pass: yourmqttpass
-  address: tcp://address:port
-  topic: /topleveltopic/host
+  topic: /mqttrooper/host
+  connection_timeout_seconds: 5
+  # Home Assistant MQTT autodiscovery. When enabled, mqttrooper publishes a
+  # retained `button` discovery config per service on startup so each service
+  # appears as a button entity in Home Assistant.
+  discovery:
+    enabled: false
+    # HA discovery topic prefix. Must match HA's `mqtt.discovery_prefix`.
+    prefix: homeassistant
+    # Used to namespace entities and group them under a single HA device.
+    # Entities are named `<device_prefix>_<service>`. Set a distinct value
+    # per host when running multiple mqttrooper instances (e.g. mqttrooper_nas).
+    device_prefix: mqttrooper
+    # Friendly device name shown in HA. Defaults to device_prefix.
+    device_name: mqttrooper
+
+http:
+  enabled: false
+  port: 8080
+  bind_address: 127.0.0.1
+  allowed_address: 127.0.0.1
+  # Base64-encoded 32-byte CSRF secret. Generate with:
+  #   head -c 32 /dev/urandom | base64
+  csrf_secret: ""
+
+daemon:
+  cwd: /var/lib/mqttrooper
+  env_path: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  log_file_path: /var/log/mqttrooper/mqttrooper.log
+  error_file_path: /var/log/mqttrooper/mqttrooper.error.log
+  mac_id: com.jtorr.mqttrooper

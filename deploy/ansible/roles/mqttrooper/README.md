@@ -36,6 +36,9 @@ By default the role downloads the binary matching the target host's
             user: mqttuser
             pass: mqttpass
             topic: /mqttrooper/myhost
+            discovery:
+              enabled: true
+              device_prefix: mqttrooper_myhost
           daemon:
             cwd: /var/lib/mqttrooper
             log_file_path: /var/log/mqttrooper/mqttrooper.log

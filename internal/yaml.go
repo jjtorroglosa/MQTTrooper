@@ -20,13 +20,21 @@ type HttpConfig struct {
 	CsrfSecret       []byte `yaml:"-"`
 }
 type MqttConfig struct {
-	Enabled                  bool   `yaml:"enabled"`
-	Address                  string `yaml:"address"`
-	ClientID                 string `yaml:"client_id"`
-	User                     string `yaml:"user"`
-	Pass                     string `yaml:"pass"`
-	Topic                    string `yaml:"topic"`
-	ConnectionTimeoutSeconds int    `yaml:"connection_timeout_seconds"`
+	Enabled                  bool            `yaml:"enabled"`
+	Address                  string          `yaml:"address"`
+	ClientID                 string          `yaml:"client_id"`
+	User                     string          `yaml:"user"`
+	Pass                     string          `yaml:"pass"`
+	Topic                    string          `yaml:"topic"`
+	ConnectionTimeoutSeconds int             `yaml:"connection_timeout_seconds"`
+	Discovery                DiscoveryConfig `yaml:"discovery"`
+}
+
+type DiscoveryConfig struct {
+	Enabled      bool   `yaml:"enabled"`
+	Prefix       string `yaml:"prefix"`
+	DevicePrefix string `yaml:"device_prefix"`
+	DeviceName   string `yaml:"device_name"`
 }
 
 type ExecutorConfig struct {
@@ -89,6 +97,11 @@ func LoadConfigFile(file string) (*Config, error) {
 			Pass:                     "",
 			Topic:                    "",
 			ConnectionTimeoutSeconds: 5,
+			Discovery: DiscoveryConfig{
+				Enabled:      false,
+				Prefix:       "homeassistant",
+				DevicePrefix: "mqttrooper",
+			},
 		},
 		Executor: ExecutorConfig{
 			Shell:  "/usr/bin/env bash",
@@ -121,6 +134,15 @@ func LoadConfigFile(file string) (*Config, error) {
 	}
 	if cfg.Mqtt.ConnectionTimeoutSeconds <= 0 || cfg.Mqtt.ConnectionTimeoutSeconds > 10 {
 		cfg.Mqtt.ConnectionTimeoutSeconds = 3
+	}
+	if cfg.Mqtt.Discovery.Prefix == "" {
+		cfg.Mqtt.Discovery.Prefix = "homeassistant"
+	}
+	if cfg.Mqtt.Discovery.DevicePrefix == "" {
+		cfg.Mqtt.Discovery.DevicePrefix = "mqttrooper"
+	}
+	if cfg.Mqtt.Discovery.DeviceName == "" {
+		cfg.Mqtt.Discovery.DeviceName = cfg.Mqtt.Discovery.DevicePrefix
 	}
 	bytes, err := base64.StdEncoding.DecodeString(cfg.Http.CsrfSecretBase64)
 	if err != nil {

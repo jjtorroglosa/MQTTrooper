@@ -89,6 +89,63 @@ daemon:
 	assert.Equal(t, "com.some.id", cfg.Daemon.MacID)
 }
 
+func TestLoadConfigFileDiscoveryDefaults(t *testing.T) {
+	content := `
+mqtt:
+  enabled: true
+  address: "tcp://127.0.0.1:1883"
+  client_id: "c"
+  user: "u"
+  pass: "p"
+  topic: "/t"
+  discovery:
+    enabled: true
+`
+	tmpfile, err := os.CreateTemp("", "test.yaml")
+	assert.NoError(t, err)
+	defer func() {
+		_ = os.Remove(tmpfile.Name())
+	}()
+	_, err = tmpfile.WriteString(content)
+	assert.NoError(t, err)
+	assert.NoError(t, tmpfile.Close())
+
+	cfg, err := LoadConfigFile(tmpfile.Name())
+	assert.NoError(t, err)
+
+	assert.Equal(t, true, cfg.Mqtt.Discovery.Enabled)
+	assert.Equal(t, "homeassistant", cfg.Mqtt.Discovery.Prefix)
+	assert.Equal(t, "mqttrooper", cfg.Mqtt.Discovery.DevicePrefix)
+	assert.Equal(t, "mqttrooper", cfg.Mqtt.Discovery.DeviceName)
+}
+
+func TestLoadConfigFileDiscoveryOverrides(t *testing.T) {
+	content := `
+mqtt:
+  enabled: true
+  discovery:
+    enabled: true
+    prefix: "ha"
+    device_prefix: "mqttrooper_nas"
+    device_name: "NAS buttons"
+`
+	tmpfile, err := os.CreateTemp("", "test.yaml")
+	assert.NoError(t, err)
+	defer func() {
+		_ = os.Remove(tmpfile.Name())
+	}()
+	_, err = tmpfile.WriteString(content)
+	assert.NoError(t, err)
+	assert.NoError(t, tmpfile.Close())
+
+	cfg, err := LoadConfigFile(tmpfile.Name())
+	assert.NoError(t, err)
+
+	assert.Equal(t, "ha", cfg.Mqtt.Discovery.Prefix)
+	assert.Equal(t, "mqttrooper_nas", cfg.Mqtt.Discovery.DevicePrefix)
+	assert.Equal(t, "NAS buttons", cfg.Mqtt.Discovery.DeviceName)
+}
+
 func TestLoadConfigFile_FileNotFound(t *testing.T) {
 	// Call openFile with a non-existent file
 	_, err := openFile("non-existent-file.yaml")
