@@ -1,0 +1,45 @@
+name: Ansible Test
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'deploy/ansible/**'
+      - '.github/workflows/ansible-test.yaml'
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install ansible-lint
+        run: pip install ansible-lint ansible-core
+      - name: Lint role
+        run: ansible-lint deploy/ansible/roles/mqttrooper
+  molecule:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: Build mqttrooper (linux/amd64)
+        run: GOOS=linux GOARCH=amd64 go build -o build/mqttrooper ./cmd/mqttrooper
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Molecule
+        run: pip install 'molecule-plugins[docker]' molecule ansible-core docker
+      - name: Run Molecule test
+        working-directory: deploy/ansible/roles/mqttrooper
+        env:
+          MQTTROOPER_BIN: ${{ github.workspace }}/build/mqttrooper
+        run: molecule test
