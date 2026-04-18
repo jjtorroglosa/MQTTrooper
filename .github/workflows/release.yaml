@@ -30,7 +30,7 @@ jobs:
 
       - name: Generate checksums
         working-directory: dist
-        run: sha256sum mqttrooper.*.* mqttrooper-publisher.*.* mqttrooper-ansible-role-*.tar.gz > SHA256SUMS
+        run: sha256sum mqttrooper.*.* mqttrooper-ansible-role-*.tar.gz > SHA256SUMS
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -62,9 +62,5 @@ jobs:
             dist/mqttrooper.linux.arm64 \
             dist/mqttrooper.darwin.amd64 \
             dist/mqttrooper.darwin.arm64 \
-            dist/mqttrooper-publisher.linux.amd64 \
-            dist/mqttrooper-publisher.linux.arm64 \
-            dist/mqttrooper-publisher.darwin.amd64 \
-            dist/mqttrooper-publisher.darwin.arm64 \
             dist/mqttrooper-ansible-role-${GITHUB_REF_NAME}.tar.gz \
             dist/SHA256SUMS
