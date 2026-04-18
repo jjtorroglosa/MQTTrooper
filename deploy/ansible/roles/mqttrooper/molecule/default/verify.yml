@@ -80,3 +80,26 @@
       ansible.builtin.assert:
         that:
           - (mqttrooper_sentinel.content | b64decode).strip() == 'fired'
+
+    - name: Fetch retained HA discovery config for the hello service
+      ansible.builtin.command: >-
+        mosquitto_sub -h 127.0.0.1 -p 1883
+        -u {{ mqttrooper_mqtt_test_user }} -P {{ mqttrooper_mqtt_test_pass }}
+        -t homeassistant/button/mqttrooper_molecule/hello/config
+        -C 1 -W 10
+      register: mqttrooper_discovery_msg
+      changed_when: false
+
+    - name: Discovery payload has expected fields
+      vars:
+        discovery: "{{ mqttrooper_discovery_msg.stdout | from_json }}"
+      ansible.builtin.assert:
+        that:
+          - discovery.name == 'hello'
+          - discovery.unique_id == 'mqttrooper_molecule_hello'
+          - discovery.object_id == 'mqttrooper_molecule_hello'
+          - discovery.command_topic == mqttrooper_mqtt_test_topic
+          - discovery.payload_press == 'hello'
+          - discovery.device.identifiers == ['mqttrooper_molecule']
+          - discovery.device.name == 'mqttrooper molecule'
+          - discovery.device.manufacturer == 'mqttrooper'
