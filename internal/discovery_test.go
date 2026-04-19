@@ -293,6 +293,82 @@ func TestPublishDiscoveryEmitsNumberConfig(test *testing.T) {
 	}
 }
 
+func TestPublishDiscoveryEmitsSwitchConfig(test *testing.T) {
+	t := setupMqttTest(test, nil)
+	defer t.teardown()
+
+	host, _ := t.testContainer.Host(t.ctx)
+	port, _ := t.testContainer.MappedPort(t.ctx, "1883/tcp")
+	address := fmt.Sprintf("%s:%s", host, port)
+
+	cfg := &Config{
+		Mqtt: MqttConfig{
+			Enabled:  true,
+			Topic:    "/mqttrooper/test",
+			ClientID: "test-bool",
+			Discovery: DiscoveryConfig{
+				Enabled:      true,
+				Prefix:       "homeassistant",
+				DevicePrefix: "mqttrooper_test",
+				DeviceName:   "mqttrooper test",
+			},
+		},
+		Entities: map[string]EntityConfig{
+			"mute": {
+				Type: EntityTypeSwitch,
+				Get:  "echo yes",
+				On:   "echo on",
+				Off:  "echo off",
+			},
+		},
+		Services: ServicesMap{},
+	}
+
+	received := make(chan mqtt.Message, 4)
+	subOpts := mqtt.NewClientOptions().
+		AddBroker(address).
+		SetClientID("bool-disc-sub").
+		SetCleanSession(true).
+		SetOnConnectHandler(func(c mqtt.Client) {
+			c.Subscribe("homeassistant/switch/#", 0, func(_ mqtt.Client, m mqtt.Message) {
+				received <- m
+			})
+		})
+	sub := mqtt.NewClient(subOpts)
+	if token := sub.Connect(); token.WaitTimeout(3*time.Second) && token.Error() != nil {
+		t.Fatal(token.Error())
+	}
+	defer sub.Disconnect(250)
+	time.Sleep(200 * time.Millisecond)
+
+	pubOpts := mqtt.NewClientOptions().AddBroker(address).SetClientID("bool-disc-pub").SetCleanSession(true)
+	pub := mqtt.NewClient(pubOpts)
+	if token := pub.Connect(); token.WaitTimeout(3*time.Second) && token.Error() != nil {
+		t.Fatal(token.Error())
+	}
+	defer pub.Disconnect(250)
+
+	assert.NoError(t, PublishDiscovery(pub, cfg))
+
+	select {
+	case m := <-received:
+		assert.Equal(t, "homeassistant/switch/mqttrooper_test/mute/config", m.Topic())
+		var payload map[string]any
+		assert.NoError(t, json.Unmarshal(m.Payload(), &payload))
+		assert.Equal(t, "mute", payload["name"])
+		assert.Equal(t, "mqttrooper_test_mute", payload["unique_id"])
+		assert.Equal(t, "mqttrooper_test_mute", payload["object_id"])
+		assert.Equal(t, "/mqttrooper/test/switch/mute/set", payload["command_topic"])
+		assert.Equal(t, "/mqttrooper/test/switch/mute/state", payload["state_topic"])
+		assert.Equal(t, "ON", payload["payload_on"])
+		assert.Equal(t, "OFF", payload["payload_off"])
+		assert.Equal(t, "ON", payload["state_on"])
+		assert.Equal(t, "OFF", payload["state_off"])
+	case <-time.After(3 * time.Second):
+		t.Fatal("timeout waiting for switch discovery message")
+	}
+}
+
 func TestPublishDiscoveryClearsStaleEntriesAllTypes(test *testing.T) {
 	t := setupMqttTest(test, nil)
 	defer t.teardown()
@@ -315,6 +391,7 @@ func TestPublishDiscoveryClearsStaleEntriesAllTypes(test *testing.T) {
 		Entities: map[string]EntityConfig{
 			"kept-button": {Type: EntityTypeCommand, Run: "echo kept"},
 			"kept-number": {Type: EntityTypeNumber, Min: 0, Max: 100, Step: 1, Get: "echo 50", Set: "echo {value}"},
+			"kept-switch": {Type: EntityTypeSwitch, Get: "echo yes", On: "echo on", Off: "echo off"},
 		},
 		Services: ServicesMap{},
 	}
@@ -335,6 +412,8 @@ func TestPublishDiscoveryClearsStaleEntriesAllTypes(test *testing.T) {
 	seed("button", "gone-button", []byte(`{"name":"gone-button"}`))
 	seed("number", "kept-number", []byte(`{"name":"kept-number"}`))
 	seed("number", "gone-number", []byte(`{"name":"gone-number"}`))
+	seed("switch", "kept-switch", []byte(`{"name":"kept-switch"}`))
+	seed("switch", "gone-switch", []byte(`{"name":"gone-switch"}`))
 
 	pubOpts := mqtt.NewClientOptions().AddBroker(address).SetClientID("multi-disc-run").SetCleanSession(true)
 	pub := mqtt.NewClient(pubOpts)
@@ -369,8 +448,10 @@ func TestPublishDiscoveryClearsStaleEntriesAllTypes(test *testing.T) {
 	defer mu.Unlock()
 	assert.Contains(t, got, fmt.Sprintf("homeassistant/button/%s/kept-button/config", dp))
 	assert.Contains(t, got, fmt.Sprintf("homeassistant/number/%s/kept-number/config", dp))
+	assert.Contains(t, got, fmt.Sprintf("homeassistant/switch/%s/kept-switch/config", dp))
 	assert.NotContains(t, got, fmt.Sprintf("homeassistant/button/%s/gone-button/config", dp))
 	assert.NotContains(t, got, fmt.Sprintf("homeassistant/number/%s/gone-number/config", dp))
+	assert.NotContains(t, got, fmt.Sprintf("homeassistant/switch/%s/gone-switch/config", dp))
 }
 
 func TestPublishDiscoveryClearsStaleEntries(test *testing.T) {

@@ -179,7 +179,7 @@ entities:
     get: pactl get-sink-volume @DEFAULT_SINK@
     set: pactl set-sink-volume @DEFAULT_SINK@ {value}%
   mute:
-    type: boolean
+    type: switch
     get: pactl get-sink-mute @DEFAULT_SINK@
     on: pactl set-sink-mute @DEFAULT_SINK@ 1
     off: pactl set-sink-mute @DEFAULT_SINK@ 0
@@ -209,7 +209,7 @@ entities:
 	assert.Equal(t, "pactl set-sink-volume @DEFAULT_SINK@ {value}%", vol.Set)
 
 	mute := cfg.Entities["mute"]
-	assert.Equal(t, EntityTypeBoolean, mute.Type)
+	assert.Equal(t, EntityTypeSwitch, mute.Type)
 	assert.Equal(t, "pactl get-sink-mute @DEFAULT_SINK@", mute.Get)
 	assert.Equal(t, "pactl set-sink-mute @DEFAULT_SINK@ 1", mute.On)
 	assert.Equal(t, "pactl set-sink-mute @DEFAULT_SINK@ 0", mute.Off)

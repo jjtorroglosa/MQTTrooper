@@ -42,7 +42,7 @@ type EntityType string
 const (
 	EntityTypeCommand EntityType = "command"
 	EntityTypeNumber  EntityType = "number"
-	EntityTypeBoolean EntityType = "boolean"
+	EntityTypeSwitch EntityType = "switch"
 )
 
 type EntityConfig struct {
@@ -55,7 +55,7 @@ type EntityConfig struct {
 	Step float64 `yaml:"step"`
 	Set  string  `yaml:"set"`
 	Get  string  `yaml:"get"`
-	// boolean
+	// switch
 	On  string `yaml:"on"`
 	Off string `yaml:"off"`
 }

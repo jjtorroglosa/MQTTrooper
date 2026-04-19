@@ -26,13 +26,23 @@ func PublishEntityStates(client mqtt.Client, cfg *Config, shell string, dryRun b
 			if err := publishRetained(client, topic, []byte(state), true); err != nil {
 				log.Printf("entities: state publish failed for %s: %v", name, err)
 			}
+		case EntityTypeSwitch:
+			raw, err := runGet(e.Get, shell, dryRun)
+			if err != nil {
+				log.Printf("entities: get failed for %s: %v", name, err)
+				continue
+			}
+			topic := fmt.Sprintf("%s/switch/%s/state", cfg.Mqtt.Topic, name)
+			if err := publishRetained(client, topic, []byte(normalizeBool(raw)), true); err != nil {
+				log.Printf("entities: state publish failed for %s: %v", name, err)
+			}
 		}
 	}
 	return nil
 }
 
 // SubscribeEntities subscribes to command topics for stateful entities (number,
-// boolean). On each incoming value it executes the set command, then runs get
+// switch). On each incoming value it executes the set command, then runs get
 // and publishes the result as the new state.
 func SubscribeEntities(client mqtt.Client, cfg *Config, shell string, dryRun bool) error {
 	for name, e := range cfg.Entities {
@@ -66,6 +76,39 @@ func SubscribeEntities(client mqtt.Client, cfg *Config, shell string, dryRun boo
 				return fmt.Errorf("subscribe %s: %w", cmdTopic, err)
 			}
 			log.Printf("entities: subscribed %s", cmdTopic)
+		case EntityTypeSwitch:
+			cmdTopic := fmt.Sprintf("%s/switch/%s/set", cfg.Mqtt.Topic, name)
+			stateTopic := fmt.Sprintf("%s/switch/%s/state", cfg.Mqtt.Topic, name)
+			tok := client.Subscribe(cmdTopic, byte(qos), func(_ mqtt.Client, m mqtt.Message) {
+				value := strings.TrimSpace(string(m.Payload()))
+				var cmd string
+				switch value {
+				case "ON":
+					cmd = e.On
+				case "OFF":
+					cmd = e.Off
+				default:
+					log.Printf("entities: invalid switch payload for %s: %q", name, value)
+					return
+				}
+				if err := runShell(cmd, shell, dryRun); err != nil {
+					log.Printf("entities: set failed for %s: %v", name, err)
+					return
+				}
+				state, err := runGet(e.Get, shell, dryRun)
+				if err != nil {
+					log.Printf("entities: get failed after set for %s: %v", name, err)
+					return
+				}
+				if err := publishRetained(client, stateTopic, []byte(normalizeBool(state)), true); err != nil {
+					log.Printf("entities: state publish failed for %s: %v", name, err)
+				}
+			})
+			tok.Wait()
+			if err := tok.Error(); err != nil {
+				return fmt.Errorf("subscribe %s: %w", cmdTopic, err)
+			}
+			log.Printf("entities: subscribed %s", cmdTopic)
 		}
 	}
 	return nil
@@ -85,6 +128,14 @@ func runGet(cmd string, shell string, dryRun bool) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+func normalizeBool(s string) string {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "1", "true", "yes", "on":
+		return "ON"
+	}
+	return "OFF"
 }
 
 func runShell(cmd string, shell string, dryRun bool) error {

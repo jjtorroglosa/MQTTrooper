@@ -31,6 +31,19 @@ type buttonDiscovery struct {
 	Device       discoveryDevice `json:"device"`
 }
 
+type switchDiscovery struct {
+	Name         string          `json:"name"`
+	UniqueID     string          `json:"unique_id"`
+	ObjectID     string          `json:"object_id"`
+	CommandTopic string          `json:"command_topic"`
+	StateTopic   string          `json:"state_topic"`
+	PayloadOn    string          `json:"payload_on"`
+	PayloadOff   string          `json:"payload_off"`
+	StateOn      string          `json:"state_on"`
+	StateOff     string          `json:"state_off"`
+	Device       discoveryDevice `json:"device"`
+}
+
 type numberDiscovery struct {
 	Name         string          `json:"name"`
 	UniqueID     string          `json:"unique_id"`
@@ -63,6 +76,7 @@ func PublishDiscovery(client mqtt.Client, cfg *Config) error {
 	currentByType := map[string]map[string]struct{}{
 		"button": {},
 		"number": {},
+		"switch": {},
 	}
 	for name, e := range cfg.Entities {
 		switch e.Type {
@@ -70,6 +84,8 @@ func PublishDiscovery(client mqtt.Client, cfg *Config) error {
 			currentByType["button"][name] = struct{}{}
 		case EntityTypeNumber:
 			currentByType["number"][name] = struct{}{}
+		case EntityTypeSwitch:
+			currentByType["switch"][name] = struct{}{}
 		}
 	}
 	for entityType, current := range currentByType {
@@ -107,6 +123,20 @@ func PublishDiscovery(client mqtt.Client, cfg *Config) error {
 				Min:          e.Min,
 				Max:          e.Max,
 				Step:         e.Step,
+				Device:       device,
+			})
+		case EntityTypeSwitch:
+			topic = fmt.Sprintf("%s/switch/%s/%s/config", d.Prefix, d.DevicePrefix, name)
+			encoded, err = json.Marshal(switchDiscovery{
+				Name:         name,
+				UniqueID:     entityID,
+				ObjectID:     entityID,
+				CommandTopic: fmt.Sprintf("%s/switch/%s/set", cfg.Mqtt.Topic, name),
+				StateTopic:   fmt.Sprintf("%s/switch/%s/state", cfg.Mqtt.Topic, name),
+				PayloadOn:    "ON",
+				PayloadOff:   "OFF",
+				StateOn:      "ON",
+				StateOff:     "OFF",
 				Device:       device,
 			})
 		default:

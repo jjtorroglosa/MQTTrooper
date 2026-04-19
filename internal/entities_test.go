@@ -139,3 +139,107 @@ func TestSubscribeEntitiesHandlesNumberSet(test *testing.T) {
 	// get command returns "75", that's the state published
 	assert.Equal(t, "75", statePayloads[len(statePayloads)-1])
 }
+
+func TestPublishEntityStatesPublishesBooleanState(test *testing.T) {
+	for _, tc := range []struct {
+		getCmd   string
+		expected string
+	}{
+		{"echo yes", "ON"},
+		{"echo 0", "OFF"},
+	} {
+		t := setupMqttTest(test, nil)
+
+		cfg := &Config{
+			Mqtt: MqttConfig{Enabled: true, Topic: "/mqttrooper/test"},
+			Entities: map[string]EntityConfig{
+				"mute": {Type: EntityTypeSwitch, Get: tc.getCmd, On: "echo on", Off: "echo off"},
+			},
+			Executor: ExecutorConfig{Shell: "/bin/bash", DryRun: false},
+		}
+
+		received := make(chan mqtt.Message, 4)
+		sub := newClient(t, "bool-state-sub")
+		defer sub.Disconnect(250)
+		sub.Subscribe("/mqttrooper/test/switch/mute/state", 0, func(_ mqtt.Client, m mqtt.Message) {
+			received <- m
+		})
+		time.Sleep(100 * time.Millisecond)
+
+		pub := newClient(t, "bool-state-pub")
+		defer pub.Disconnect(250)
+
+		assert.NoError(t, PublishEntityStates(pub, cfg, cfg.Executor.Shell, cfg.Executor.DryRun))
+
+		select {
+		case m := <-received:
+			assert.Equal(t, tc.expected, string(m.Payload()))
+		case <-time.After(3 * time.Second):
+			test.Fatal("timeout waiting for boolean entity state")
+		}
+
+		t.teardown()
+	}
+}
+
+func TestSubscribeEntitiesHandlesBooleanSet(test *testing.T) {
+	t := setupMqttTest(test, nil)
+	defer t.teardown()
+
+	var mu sync.Mutex
+	var statePayloads []string
+
+	cfg := &Config{
+		Mqtt: MqttConfig{Enabled: true, Topic: "/mqttrooper/test"},
+		Entities: map[string]EntityConfig{
+			"mute": {
+				Type: EntityTypeSwitch,
+				Get:  "echo yes",
+				On:   "echo turning-on",
+				Off:  "echo turning-off",
+			},
+		},
+		Executor: ExecutorConfig{Shell: "/bin/bash", DryRun: false},
+	}
+
+	stateSub := newClient(t, "bool-sub")
+	defer stateSub.Disconnect(250)
+	stateSub.Subscribe("/mqttrooper/test/switch/mute/state", 0, func(_ mqtt.Client, m mqtt.Message) {
+		mu.Lock()
+		statePayloads = append(statePayloads, string(m.Payload()))
+		mu.Unlock()
+	})
+	time.Sleep(100 * time.Millisecond)
+
+	daemon := newClient(t, "bool-daemon")
+	defer daemon.Disconnect(250)
+	assert.NoError(t, SubscribeEntities(daemon, cfg, cfg.Executor.Shell, cfg.Executor.DryRun))
+	time.Sleep(100 * time.Millisecond)
+
+	pub := newClient(t, "bool-pub")
+	defer pub.Disconnect(250)
+
+	// Send ON
+	tok := pub.Publish("/mqttrooper/test/switch/mute/set", 0, false, "ON")
+	tok.Wait()
+	assert.NoError(t, tok.Error())
+	time.Sleep(500 * time.Millisecond)
+
+	// Send OFF
+	tok = pub.Publish("/mqttrooper/test/switch/mute/set", 0, false, "OFF")
+	tok.Wait()
+	assert.NoError(t, tok.Error())
+	time.Sleep(500 * time.Millisecond)
+
+	// Send invalid
+	tok = pub.Publish("/mqttrooper/test/switch/mute/set", 0, false, "INVALID")
+	tok.Wait()
+	assert.NoError(t, tok.Error())
+	time.Sleep(300 * time.Millisecond)
+
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Len(t, statePayloads, 2, "expected state published for ON and OFF only")
+	assert.Equal(t, "ON", statePayloads[0])
+	assert.Equal(t, "ON", statePayloads[1]) // Get always returns "yes" → "ON"
+}
