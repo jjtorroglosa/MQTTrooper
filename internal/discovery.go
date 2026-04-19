@@ -31,11 +31,35 @@ type buttonDiscovery struct {
 	Device       discoveryDevice `json:"device"`
 }
 
-// PublishDiscovery publishes a Home Assistant MQTT discovery config message for
-// each service in cfg.ServicesList, modelling each service as a stateless
-// `button` entity. Messages are published with the retained flag so HA picks
-// them up whenever it (re)starts. Errors publishing individual entities are
-// logged but do not abort the batch.
+type switchDiscovery struct {
+	Name         string          `json:"name"`
+	UniqueID     string          `json:"unique_id"`
+	ObjectID     string          `json:"object_id"`
+	CommandTopic string          `json:"command_topic"`
+	StateTopic   string          `json:"state_topic"`
+	PayloadOn    string          `json:"payload_on"`
+	PayloadOff   string          `json:"payload_off"`
+	StateOn      string          `json:"state_on"`
+	StateOff     string          `json:"state_off"`
+	Device       discoveryDevice `json:"device"`
+}
+
+type numberDiscovery struct {
+	Name         string          `json:"name"`
+	UniqueID     string          `json:"unique_id"`
+	ObjectID     string          `json:"object_id"`
+	CommandTopic string          `json:"command_topic"`
+	StateTopic   string          `json:"state_topic"`
+	Min          float64         `json:"min"`
+	Max          float64         `json:"max"`
+	Step         float64         `json:"step"`
+	Device       discoveryDevice `json:"device"`
+}
+
+// PublishDiscovery publishes Home Assistant MQTT discovery config messages for
+// all entities in cfg.Entities. Messages are published with the retained flag
+// so HA picks them up whenever it (re)starts. Errors publishing individual
+// entities are logged but do not abort the batch.
 func PublishDiscovery(client mqtt.Client, cfg *Config) error {
 	d := cfg.Mqtt.Discovery
 	deviceName := d.DeviceName
@@ -48,31 +72,81 @@ func PublishDiscovery(client mqtt.Client, cfg *Config) error {
 		Manufacturer: "mqttrooper",
 	}
 
-	current := make(map[string]struct{}, len(cfg.ServicesList))
-	for _, svc := range cfg.ServicesList {
-		current[svc.Name] = struct{}{}
+	// Build per-type sets of current entity names for stale cleanup.
+	currentByType := map[string]map[string]struct{}{
+		"button": {},
+		"number": {},
+		"switch": {},
 	}
-	if err := cleanupStaleDiscovery(client, d, current); err != nil {
-		log.Printf("discovery cleanup failed: %v", err)
+	for name, e := range cfg.Entities {
+		switch e.Type {
+		case EntityTypeCommand:
+			currentByType["button"][name] = struct{}{}
+		case EntityTypeNumber:
+			currentByType["number"][name] = struct{}{}
+		case EntityTypeSwitch:
+			currentByType["switch"][name] = struct{}{}
+		}
+	}
+	for entityType, current := range currentByType {
+		if err := cleanupStaleDiscovery(client, d, entityType, current); err != nil {
+			log.Printf("discovery cleanup failed for %s: %v", entityType, err)
+		}
 	}
 
-	for _, svc := range cfg.ServicesList {
-		entityID := fmt.Sprintf("%s_%s", d.DevicePrefix, svc.Name)
-		payload := buttonDiscovery{
-			Name:         svc.Name,
-			UniqueID:     entityID,
-			ObjectID:     entityID,
-			CommandTopic: cfg.Mqtt.Topic,
-			PayloadPress: svc.Name,
-			Device:       device,
+	for name, e := range cfg.Entities {
+		entityID := fmt.Sprintf("%s_%s", d.DevicePrefix, name)
+		var (
+			encoded []byte
+			err     error
+			topic   string
+		)
+		switch e.Type {
+		case EntityTypeCommand:
+			topic = fmt.Sprintf("%s/button/%s/%s/config", d.Prefix, d.DevicePrefix, name)
+			encoded, err = json.Marshal(buttonDiscovery{
+				Name:         name,
+				UniqueID:     entityID,
+				ObjectID:     entityID,
+				CommandTopic: cfg.Mqtt.Topic,
+				PayloadPress: name,
+				Device:       device,
+			})
+		case EntityTypeNumber:
+			topic = fmt.Sprintf("%s/number/%s/%s/config", d.Prefix, d.DevicePrefix, name)
+			encoded, err = json.Marshal(numberDiscovery{
+				Name:         name,
+				UniqueID:     entityID,
+				ObjectID:     entityID,
+				CommandTopic: fmt.Sprintf("%s/number/%s/set", cfg.Mqtt.Topic, name),
+				StateTopic:   fmt.Sprintf("%s/number/%s/state", cfg.Mqtt.Topic, name),
+				Min:          e.Min,
+				Max:          e.Max,
+				Step:         e.Step,
+				Device:       device,
+			})
+		case EntityTypeSwitch:
+			topic = fmt.Sprintf("%s/switch/%s/%s/config", d.Prefix, d.DevicePrefix, name)
+			encoded, err = json.Marshal(switchDiscovery{
+				Name:         name,
+				UniqueID:     entityID,
+				ObjectID:     entityID,
+				CommandTopic: fmt.Sprintf("%s/switch/%s/set", cfg.Mqtt.Topic, name),
+				StateTopic:   fmt.Sprintf("%s/switch/%s/state", cfg.Mqtt.Topic, name),
+				PayloadOn:    "ON",
+				PayloadOff:   "OFF",
+				StateOn:      "ON",
+				StateOff:     "OFF",
+				Device:       device,
+			})
+		default:
+			continue
 		}
-		encoded, err := json.Marshal(payload)
 		if err != nil {
-			return fmt.Errorf("marshal discovery for %s: %w", svc.Name, err)
+			return fmt.Errorf("marshal discovery for %s: %w", name, err)
 		}
-		topic := fmt.Sprintf("%s/button/%s/%s/config", d.Prefix, d.DevicePrefix, svc.Name)
 		if err := publishRetained(client, topic, encoded, true); err != nil {
-			log.Printf("discovery publish failed for %s: %v", svc.Name, err)
+			log.Printf("discovery publish failed for %s: %v", name, err)
 			continue
 		}
 		log.Printf("discovery published: %s", topic)
@@ -80,12 +154,11 @@ func PublishDiscovery(client mqtt.Client, cfg *Config) error {
 	return nil
 }
 
-// cleanupStaleDiscovery subscribes briefly to the discovery wildcard for this
-// device_prefix, collects whatever retained messages the broker replays, and
-// clears (publishes empty retained payload to) any topics whose service name
-// is not in `current`.
-func cleanupStaleDiscovery(client mqtt.Client, d DiscoveryConfig, current map[string]struct{}) error {
-	wildcard := fmt.Sprintf("%s/button/%s/+/config", d.Prefix, d.DevicePrefix)
+// cleanupStaleDiscovery subscribes briefly to the discovery wildcard for the
+// given entityType and device_prefix, collects whatever retained messages the
+// broker replays, and clears any topics whose entity name is not in `current`.
+func cleanupStaleDiscovery(client mqtt.Client, d DiscoveryConfig, entityType string, current map[string]struct{}) error {
+	wildcard := fmt.Sprintf("%s/%s/%s/+/config", d.Prefix, entityType, d.DevicePrefix)
 
 	var (
 		mu    sync.Mutex
@@ -127,7 +200,7 @@ func cleanupStaleDiscovery(client mqtt.Client, d DiscoveryConfig, current map[st
 	mu.Lock()
 	defer mu.Unlock()
 	for topic := range seen {
-		svc := serviceFromDiscoveryTopic(topic, d)
+		svc := entityFromDiscoveryTopic(topic, entityType, d)
 		if svc == "" {
 			continue
 		}
@@ -143,8 +216,8 @@ func cleanupStaleDiscovery(client mqtt.Client, d DiscoveryConfig, current map[st
 	return nil
 }
 
-func serviceFromDiscoveryTopic(topic string, d DiscoveryConfig) string {
-	prefix := fmt.Sprintf("%s/button/%s/", d.Prefix, d.DevicePrefix)
+func entityFromDiscoveryTopic(topic string, entityType string, d DiscoveryConfig) string {
+	prefix := fmt.Sprintf("%s/%s/%s/", d.Prefix, entityType, d.DevicePrefix)
 	suffix := "/config"
 	if !strings.HasPrefix(topic, prefix) || !strings.HasSuffix(topic, suffix) {
 		return ""

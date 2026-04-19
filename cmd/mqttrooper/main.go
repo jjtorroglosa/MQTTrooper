@@ -68,6 +68,12 @@ func serve(cfg *internal.Config) {
 				log.Printf("Discovery publish error: %v", err)
 			}
 		}
+		if err := internal.PublishEntityStates(client, cfg, cfg.Executor.Shell, cfg.Executor.DryRun); err != nil {
+			log.Printf("Entity state publish error: %v", err)
+		}
+		if err := internal.SubscribeEntities(client, cfg, cfg.Executor.Shell, cfg.Executor.DryRun); err != nil {
+			log.Printf("Entity subscribe error: %v", err)
+		}
 	} else if cfg.Mqtt.Discovery.Enabled {
 		log.Println("mqtt.discovery.enabled=true but mqtt.enabled=false; skipping discovery")
 	}

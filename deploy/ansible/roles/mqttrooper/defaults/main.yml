@@ -31,6 +31,7 @@ mqttrooper_binary_checksum: ""
 
 mqttrooper_user: mqttrooper
 mqttrooper_group: mqttrooper
+mqttrooper_create_user: true
 
 mqttrooper_install_dir: /usr/local/bin
 mqttrooper_config_dir: /etc/mqttrooper
@@ -49,6 +50,7 @@ mqttrooper_config:
   executor:
     shell: /usr/bin/env bash
     dry_run: false
+  entities: {}
   services: {}
   http:
     enabled: false

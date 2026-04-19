@@ -16,6 +16,7 @@
     name: "{{ mqttrooper_group }}"
     system: true
     state: present
+  when: mqttrooper_create_user
 
 - name: Ensure mqttrooper system user exists
   ansible.builtin.user:
@@ -26,6 +27,7 @@
     home: "{{ mqttrooper_working_dir }}"
     create_home: false
     state: present
+  when: mqttrooper_create_user
 
 - name: Ensure config directory exists
   ansible.builtin.file:
