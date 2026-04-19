@@ -37,6 +37,29 @@ type DiscoveryConfig struct {
 	DeviceName   string `yaml:"device_name"`
 }
 
+type EntityType string
+
+const (
+	EntityTypeCommand EntityType = "command"
+	EntityTypeNumber  EntityType = "number"
+	EntityTypeBoolean EntityType = "boolean"
+)
+
+type EntityConfig struct {
+	Type EntityType `yaml:"type"`
+	// command
+	Run string `yaml:"run"`
+	// number
+	Min  float64 `yaml:"min"`
+	Max  float64 `yaml:"max"`
+	Step float64 `yaml:"step"`
+	Set  string  `yaml:"set"`
+	Get  string  `yaml:"get"`
+	// boolean
+	On  string `yaml:"on"`
+	Off string `yaml:"off"`
+}
+
 type ExecutorConfig struct {
 	Shell  string `yaml:"shell"`
 	DryRun bool   `yaml:"dry_run"`
@@ -59,11 +82,12 @@ type DaemonConfig struct {
 type Config struct {
 	ConfigPath   string
 	ServicesList ServicesList
-	Services     ServicesMap    `yaml:"services"`
-	Mqtt         MqttConfig     `yaml:"mqtt"`
-	Executor     ExecutorConfig `yaml:"executor"`
-	Http         HttpConfig     `yaml:"http"`
-	Daemon       DaemonConfig   `yaml:"daemon"`
+	Entities     map[string]EntityConfig `yaml:"entities"`
+	Services     ServicesMap             `yaml:"services"`
+	Mqtt         MqttConfig              `yaml:"mqtt"`
+	Executor     ExecutorConfig          `yaml:"executor"`
+	Http         HttpConfig              `yaml:"http"`
+	Daemon       DaemonConfig            `yaml:"daemon"`
 }
 
 func openFile(file string) (string, error) {
@@ -126,11 +150,24 @@ func LoadConfigFile(file string) (*Config, error) {
 		log.Fatalf("error: %v", err)
 	}
 
+	if cfg.Entities == nil {
+		cfg.Entities = make(map[string]EntityConfig)
+	}
+	if cfg.Services == nil {
+		cfg.Services = make(ServicesMap)
+	}
+	// Fold deprecated services into Entities as type:command (don't overwrite).
 	for k, v := range cfg.Services {
-		cfg.ServicesList = append(cfg.ServicesList, Service{
-			Name:    k,
-			Command: v,
-		})
+		if _, exists := cfg.Entities[k]; !exists {
+			cfg.Entities[k] = EntityConfig{Type: EntityTypeCommand, Run: v}
+		}
+	}
+	// Derive ServicesList from command entities for the existing executor path.
+	for k, e := range cfg.Entities {
+		if e.Type == EntityTypeCommand {
+			cfg.ServicesList = append(cfg.ServicesList, Service{Name: k, Command: e.Run})
+			cfg.Services[k] = e.Run
+		}
 	}
 	if cfg.Mqtt.ConnectionTimeoutSeconds <= 0 || cfg.Mqtt.ConnectionTimeoutSeconds > 10 {
 		cfg.Mqtt.ConnectionTimeoutSeconds = 3
