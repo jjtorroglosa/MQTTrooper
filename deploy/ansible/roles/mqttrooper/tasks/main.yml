@@ -29,6 +29,20 @@
     state: present
   when: mqttrooper_create_user
 
+- name: Look up mqttrooper user UID
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ mqttrooper_user }}"
+
+- name: Set mqttrooper_user_uid fact
+  ansible.builtin.set_fact:
+    mqttrooper_user_uid: "{{ getent_passwd[mqttrooper_user][1] }}"
+
+- name: Enable lingering for mqttrooper user
+  ansible.builtin.command: "loginctl enable-linger {{ mqttrooper_user }}"
+  args:
+    creates: "/var/lib/systemd/linger/{{ mqttrooper_user }}"
+
 - name: Ensure config directory exists
   ansible.builtin.file:
     path: "{{ mqttrooper_config_dir }}"

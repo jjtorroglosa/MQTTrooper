@@ -43,6 +43,7 @@ mqttrooper_env_path: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/b
 
 mqttrooper_service_enabled: true
 mqttrooper_service_state: started
+mqttrooper_service_protect_home: false
 
 # Dict rendered verbatim as /etc/mqttrooper/config.yaml.
 # Override in inventory/group_vars. Keep mqtt.enabled or http.enabled true.
