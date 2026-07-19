@@ -91,6 +91,12 @@ func TestSubscribeEntitiesHandlesNumberSet(test *testing.T) {
 	var mu sync.Mutex
 	var executedCmd string
 	var statePayloads []string
+	executor := Executor(func(cmd string) error {
+		mu.Lock()
+		executedCmd = cmd
+		mu.Unlock()
+		return nil
+	})
 
 	cfg := &Config{
 		Mqtt: MqttConfig{
@@ -120,7 +126,7 @@ func TestSubscribeEntitiesHandlesNumberSet(test *testing.T) {
 	daemon := newClient(t, "num-daemon")
 	defer daemon.Disconnect(250)
 
-	assert.NoError(t, SubscribeEntities(daemon, cfg, cfg.Executor.Shell, cfg.Executor.DryRun))
+	assert.NoError(t, SubscribeEntities(daemon, cfg, executor, cfg.Executor.Shell, cfg.Executor.DryRun))
 	time.Sleep(100 * time.Millisecond)
 
 	// HA publishes a new value
@@ -131,10 +137,10 @@ func TestSubscribeEntitiesHandlesNumberSet(test *testing.T) {
 	assert.NoError(t, tok.Error())
 
 	time.Sleep(500 * time.Millisecond)
-	_ = executedCmd
 
 	mu.Lock()
 	defer mu.Unlock()
+	assert.Equal(t, "echo set-80", executedCmd)
 	assert.NotEmpty(t, statePayloads, "expected state published after set")
 	// get command returns "75", that's the state published
 	assert.Equal(t, "75", statePayloads[len(statePayloads)-1])
@@ -187,7 +193,14 @@ func TestSubscribeEntitiesHandlesBooleanSet(test *testing.T) {
 	defer t.teardown()
 
 	var mu sync.Mutex
+	var executed []string
 	var statePayloads []string
+	executor := Executor(func(cmd string) error {
+		mu.Lock()
+		executed = append(executed, cmd)
+		mu.Unlock()
+		return nil
+	})
 
 	cfg := &Config{
 		Mqtt: MqttConfig{Enabled: true, Topic: "/mqttrooper/test"},
@@ -213,7 +226,7 @@ func TestSubscribeEntitiesHandlesBooleanSet(test *testing.T) {
 
 	daemon := newClient(t, "bool-daemon")
 	defer daemon.Disconnect(250)
-	assert.NoError(t, SubscribeEntities(daemon, cfg, cfg.Executor.Shell, cfg.Executor.DryRun))
+	assert.NoError(t, SubscribeEntities(daemon, cfg, executor, cfg.Executor.Shell, cfg.Executor.DryRun))
 	time.Sleep(100 * time.Millisecond)
 
 	pub := newClient(t, "bool-pub")
@@ -239,6 +252,7 @@ func TestSubscribeEntitiesHandlesBooleanSet(test *testing.T) {
 
 	mu.Lock()
 	defer mu.Unlock()
+	assert.Equal(t, []string{"echo turning-on", "echo turning-off"}, executed)
 	assert.Len(t, statePayloads, 2, "expected state published for ON and OFF only")
 	assert.Equal(t, "ON", statePayloads[0])
 	assert.Equal(t, "ON", statePayloads[1]) // Get always returns "yes" → "ON"

@@ -99,6 +99,18 @@ func setupMqttTest(t *testing.T, fixedHostPort *string) *mqttTest {
 	}
 }
 
+func TestCreateExecutorRunsRawCommandWhenServiceMissing(t *testing.T) {
+	filename := fmt.Sprintf("/tmp/mqttrooper-test-%d", time.Now().UnixNano())
+	defer func() { _ = os.Remove(filename) }()
+
+	executor := CreateExecutor(false, "/bin/bash", map[string]string{})
+	assert.NoError(t, executor(fmt.Sprintf("echo -n hello > %s", filename)))
+
+	bytes, err := os.ReadFile(filename)
+	assert.NoError(t, err)
+	assert.Equal(t, "hello", string(bytes))
+}
+
 func TestMqttSubscriptionsReceiveCommands(test *testing.T) {
 	t := setupMqttTest(test, nil)
 	defer t.teardown()

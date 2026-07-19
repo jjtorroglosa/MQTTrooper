@@ -23,37 +23,37 @@ type discoveryDevice struct {
 }
 
 type buttonDiscovery struct {
-	Name         string          `json:"name"`
-	UniqueID     string          `json:"unique_id"`
-	ObjectID     string          `json:"object_id"`
-	CommandTopic string          `json:"command_topic"`
-	PayloadPress string          `json:"payload_press"`
-	Device       discoveryDevice `json:"device"`
+	Name            string          `json:"name"`
+	UniqueID        string          `json:"unique_id"`
+	DefaultEntityId string          `json:"default_entity_id"`
+	CommandTopic    string          `json:"command_topic"`
+	PayloadPress    string          `json:"payload_press"`
+	Device          discoveryDevice `json:"device"`
 }
 
 type switchDiscovery struct {
-	Name         string          `json:"name"`
-	UniqueID     string          `json:"unique_id"`
-	ObjectID     string          `json:"object_id"`
-	CommandTopic string          `json:"command_topic"`
-	StateTopic   string          `json:"state_topic"`
-	PayloadOn    string          `json:"payload_on"`
-	PayloadOff   string          `json:"payload_off"`
-	StateOn      string          `json:"state_on"`
-	StateOff     string          `json:"state_off"`
-	Device       discoveryDevice `json:"device"`
+	Name            string          `json:"name"`
+	UniqueID        string          `json:"unique_id"`
+	DefaultEntityId string          `json:"default_entity_id"`
+	CommandTopic    string          `json:"command_topic"`
+	StateTopic      string          `json:"state_topic"`
+	PayloadOn       string          `json:"payload_on"`
+	PayloadOff      string          `json:"payload_off"`
+	StateOn         string          `json:"state_on"`
+	StateOff        string          `json:"state_off"`
+	Device          discoveryDevice `json:"device"`
 }
 
 type numberDiscovery struct {
-	Name         string          `json:"name"`
-	UniqueID     string          `json:"unique_id"`
-	ObjectID     string          `json:"object_id"`
-	CommandTopic string          `json:"command_topic"`
-	StateTopic   string          `json:"state_topic"`
-	Min          float64         `json:"min"`
-	Max          float64         `json:"max"`
-	Step         float64         `json:"step"`
-	Device       discoveryDevice `json:"device"`
+	Name            string          `json:"name"`
+	UniqueID        string          `json:"unique_id"`
+	DefaultEntityId string          `json:"default_entity_id"`
+	CommandTopic    string          `json:"command_topic"`
+	StateTopic      string          `json:"state_topic"`
+	Min             float64         `json:"min"`
+	Max             float64         `json:"max"`
+	Step            float64         `json:"step"`
+	Device          discoveryDevice `json:"device"`
 }
 
 // PublishDiscovery publishes Home Assistant MQTT discovery config messages for
@@ -105,39 +105,39 @@ func PublishDiscovery(client mqtt.Client, cfg *Config) error {
 		case EntityTypeCommand:
 			topic = fmt.Sprintf("%s/button/%s/%s/config", d.Prefix, d.DevicePrefix, name)
 			encoded, err = json.Marshal(buttonDiscovery{
-				Name:         name,
-				UniqueID:     entityID,
-				ObjectID:     entityID,
-				CommandTopic: cfg.Mqtt.Topic,
-				PayloadPress: name,
-				Device:       device,
+				Name:            name,
+				UniqueID:        entityID,
+				DefaultEntityId: "button." + entityID,
+				CommandTopic:    cfg.Mqtt.Topic,
+				PayloadPress:    name,
+				Device:          device,
 			})
 		case EntityTypeNumber:
 			topic = fmt.Sprintf("%s/number/%s/%s/config", d.Prefix, d.DevicePrefix, name)
 			encoded, err = json.Marshal(numberDiscovery{
-				Name:         name,
-				UniqueID:     entityID,
-				ObjectID:     entityID,
-				CommandTopic: fmt.Sprintf("%s/number/%s/set", cfg.Mqtt.Topic, name),
-				StateTopic:   fmt.Sprintf("%s/number/%s/state", cfg.Mqtt.Topic, name),
-				Min:          e.Min,
-				Max:          e.Max,
-				Step:         e.Step,
-				Device:       device,
+				Name:            name,
+				UniqueID:        entityID,
+				DefaultEntityId: "number." + entityID,
+				CommandTopic:    fmt.Sprintf("%s/number/%s/set", cfg.Mqtt.Topic, name),
+				StateTopic:      fmt.Sprintf("%s/number/%s/state", cfg.Mqtt.Topic, name),
+				Min:             e.Min,
+				Max:             e.Max,
+				Step:            e.Step,
+				Device:          device,
 			})
 		case EntityTypeSwitch:
 			topic = fmt.Sprintf("%s/switch/%s/%s/config", d.Prefix, d.DevicePrefix, name)
 			encoded, err = json.Marshal(switchDiscovery{
-				Name:         name,
-				UniqueID:     entityID,
-				ObjectID:     entityID,
-				CommandTopic: fmt.Sprintf("%s/switch/%s/set", cfg.Mqtt.Topic, name),
-				StateTopic:   fmt.Sprintf("%s/switch/%s/state", cfg.Mqtt.Topic, name),
-				PayloadOn:    "ON",
-				PayloadOff:   "OFF",
-				StateOn:      "ON",
-				StateOff:     "OFF",
-				Device:       device,
+				Name:            name,
+				UniqueID:        entityID,
+				DefaultEntityId: "switch." + entityID,
+				CommandTopic:    fmt.Sprintf("%s/switch/%s/set", cfg.Mqtt.Topic, name),
+				StateTopic:      fmt.Sprintf("%s/switch/%s/state", cfg.Mqtt.Topic, name),
+				PayloadOn:       "ON",
+				PayloadOff:      "OFF",
+				StateOn:         "ON",
+				StateOff:        "OFF",
+				Device:          device,
 			})
 		default:
 			continue

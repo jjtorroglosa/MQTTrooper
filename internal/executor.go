@@ -2,7 +2,6 @@ package internal
 
 import (
 	"bytes"
-	"errors"
 	"log"
 	"os/exec"
 	"strings"
@@ -14,7 +13,7 @@ func CreateExecutor(dryRun bool, shell string, services map[string]string) Execu
 	return func(service string) error {
 		commandToExecute, ok := services[service]
 		if !ok {
-			return errors.New("unknown service")
+			commandToExecute = service
 		}
 		var output bytes.Buffer
 		log.Printf("$ %s %s %s", shell, "-c", commandToExecute)

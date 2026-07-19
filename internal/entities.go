@@ -44,21 +44,20 @@ func PublishEntityStates(client mqtt.Client, cfg *Config, shell string, dryRun b
 // SubscribeEntities subscribes to command topics for stateful entities (number,
 // switch). On each incoming value it executes the set command, then runs get
 // and publishes the result as the new state.
-func SubscribeEntities(client mqtt.Client, cfg *Config, shell string, dryRun bool) error {
+func SubscribeEntities(client mqtt.Client, cfg *Config, execute Executor, shell string, dryRun bool) error {
 	for name, e := range cfg.Entities {
-		name, e := name, e
 		switch e.Type {
 		case EntityTypeNumber:
 			cmdTopic := fmt.Sprintf("%s/number/%s/set", cfg.Mqtt.Topic, name)
 			stateTopic := fmt.Sprintf("%s/number/%s/state", cfg.Mqtt.Topic, name)
 			tok := client.Subscribe(cmdTopic, byte(qos), func(_ mqtt.Client, m mqtt.Message) {
-				value := strings.TrimSpace(string(m.Payload()))
-				if _, err := strconv.ParseFloat(value, 64); err != nil {
-					log.Printf("entities: invalid number payload for %s: %q", name, value)
+				payload := strings.TrimSpace(string(m.Payload()))
+				if _, err := strconv.ParseFloat(payload, 64); err != nil {
+					log.Printf("entities: invalid number payload for %s: %q", name, payload)
 					return
 				}
-				cmd := strings.ReplaceAll(e.Set, "{value}", value)
-				if err := runShell(cmd, shell, dryRun); err != nil {
+				cmd := strings.ReplaceAll(e.Set, "{value}", payload)
+				if err := execute(cmd); err != nil {
 					log.Printf("entities: set failed for %s: %v", name, err)
 					return
 				}
@@ -69,6 +68,7 @@ func SubscribeEntities(client mqtt.Client, cfg *Config, shell string, dryRun boo
 				}
 				if err := publishRetained(client, stateTopic, []byte(state), true); err != nil {
 					log.Printf("entities: state publish failed for %s: %v", name, err)
+					return
 				}
 			})
 			tok.Wait()
@@ -91,7 +91,7 @@ func SubscribeEntities(client mqtt.Client, cfg *Config, shell string, dryRun boo
 					log.Printf("entities: invalid switch payload for %s: %q", name, value)
 					return
 				}
-				if err := runShell(cmd, shell, dryRun); err != nil {
+				if err := execute(cmd); err != nil {
 					log.Printf("entities: set failed for %s: %v", name, err)
 					return
 				}
@@ -136,13 +136,4 @@ func normalizeBool(s string) string {
 		return "ON"
 	}
 	return "OFF"
-}
-
-func runShell(cmd string, shell string, dryRun bool) error {
-	if dryRun {
-		return nil
-	}
-	parts := strings.Fields(shell)
-	parts = append(parts, "-c", cmd)
-	return exec.Command(parts[0], parts[1:]...).Run()
 }
