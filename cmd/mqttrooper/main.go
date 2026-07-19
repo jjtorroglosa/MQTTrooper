@@ -58,6 +58,7 @@ func serve(cfg *internal.Config) {
 	}
 
 	execute := internal.CreateExecutor(cfg.Executor.DryRun, cfg.Executor.Shell, cfg.Services)
+	entityExecute := internal.CreateEntityExecutor(cfg.Executor.DryRun, cfg.Executor.Shell, cfg.Entities)
 	log.Println("Config created")
 
 	var client mqtt.Client
@@ -68,10 +69,10 @@ func serve(cfg *internal.Config) {
 				log.Printf("Discovery publish error: %v", err)
 			}
 		}
-		if err := internal.PublishEntityStates(client, cfg, cfg.Executor.Shell, cfg.Executor.DryRun); err != nil {
+		if err := internal.PublishEntityStates(client, cfg, entityExecute); err != nil {
 			log.Printf("Entity state publish error: %v", err)
 		}
-		if err := internal.SubscribeEntities(client, cfg, execute, cfg.Executor.Shell, cfg.Executor.DryRun); err != nil {
+		if err := internal.SubscribeEntities(client, cfg, entityExecute); err != nil {
 			log.Printf("Entity subscribe error: %v", err)
 		}
 	} else if cfg.Mqtt.Discovery.Enabled {
