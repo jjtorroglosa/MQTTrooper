@@ -99,6 +99,11 @@ func setupMqttTest(t *testing.T, fixedHostPort *string) *mqttTest {
 	}
 }
 
+func TestCreateExecutorReturnsErrorWhenServiceMissing(t *testing.T) {
+	executor := CreateExecutor(false, "/bin/bash", map[string]string{})
+	assert.Error(t, executor("missing-service"))
+}
+
 func TestMqttSubscriptionsReceiveCommands(test *testing.T) {
 	t := setupMqttTest(test, nil)
 	defer t.teardown()

@@ -1,10 +1,8 @@
 package internal
 
 import (
-	"bytes"
 	"fmt"
 	"log"
-	"os/exec"
 	"strconv"
 	"strings"
 
@@ -13,11 +11,11 @@ import (
 
 // PublishEntityStates runs the get command for each stateful entity at startup
 // and publishes the result as the initial HA state (retained).
-func PublishEntityStates(client mqtt.Client, cfg *Config, shell string, dryRun bool) error {
+func PublishEntityStates(client mqtt.Client, cfg *Config, executor EntityExecutor) error {
 	for name, e := range cfg.Entities {
 		switch e.Type {
 		case EntityTypeNumber:
-			state, err := runGet(e.Get, shell, dryRun)
+			state, err := executor.Execute(name, EntityOpGet, nil)
 			if err != nil {
 				log.Printf("entities: get failed for %s: %v", name, err)
 				continue
@@ -27,7 +25,7 @@ func PublishEntityStates(client mqtt.Client, cfg *Config, shell string, dryRun b
 				log.Printf("entities: state publish failed for %s: %v", name, err)
 			}
 		case EntityTypeSwitch:
-			raw, err := runGet(e.Get, shell, dryRun)
+			raw, err := executor.Execute(name, EntityOpGet, nil)
 			if err != nil {
 				log.Printf("entities: get failed for %s: %v", name, err)
 				continue
@@ -44,31 +42,30 @@ func PublishEntityStates(client mqtt.Client, cfg *Config, shell string, dryRun b
 // SubscribeEntities subscribes to command topics for stateful entities (number,
 // switch). On each incoming value it executes the set command, then runs get
 // and publishes the result as the new state.
-func SubscribeEntities(client mqtt.Client, cfg *Config, shell string, dryRun bool) error {
+func SubscribeEntities(client mqtt.Client, cfg *Config, executor EntityExecutor) error {
 	for name, e := range cfg.Entities {
-		name, e := name, e
 		switch e.Type {
 		case EntityTypeNumber:
 			cmdTopic := fmt.Sprintf("%s/number/%s/set", cfg.Mqtt.Topic, name)
 			stateTopic := fmt.Sprintf("%s/number/%s/state", cfg.Mqtt.Topic, name)
 			tok := client.Subscribe(cmdTopic, byte(qos), func(_ mqtt.Client, m mqtt.Message) {
-				value := strings.TrimSpace(string(m.Payload()))
-				if _, err := strconv.ParseFloat(value, 64); err != nil {
-					log.Printf("entities: invalid number payload for %s: %q", name, value)
+				payload := strings.TrimSpace(string(m.Payload()))
+				if _, err := strconv.ParseFloat(payload, 64); err != nil {
+					log.Printf("entities: invalid number payload for %s: %q", name, payload)
 					return
 				}
-				cmd := strings.ReplaceAll(e.Set, "{value}", value)
-				if err := runShell(cmd, shell, dryRun); err != nil {
+				if _, err := executor.Execute(name, EntityOpSet, &payload); err != nil {
 					log.Printf("entities: set failed for %s: %v", name, err)
 					return
 				}
-				state, err := runGet(e.Get, shell, dryRun)
+				state, err := executor.Execute(name, EntityOpGet, nil)
 				if err != nil {
 					log.Printf("entities: get failed after set for %s: %v", name, err)
 					return
 				}
 				if err := publishRetained(client, stateTopic, []byte(state), true); err != nil {
 					log.Printf("entities: state publish failed for %s: %v", name, err)
+					return
 				}
 			})
 			tok.Wait()
@@ -81,21 +78,21 @@ func SubscribeEntities(client mqtt.Client, cfg *Config, shell string, dryRun boo
 			stateTopic := fmt.Sprintf("%s/switch/%s/state", cfg.Mqtt.Topic, name)
 			tok := client.Subscribe(cmdTopic, byte(qos), func(_ mqtt.Client, m mqtt.Message) {
 				value := strings.TrimSpace(string(m.Payload()))
-				var cmd string
+				var op EntityOperation
 				switch value {
 				case "ON":
-					cmd = e.On
+					op = EntityOpOn
 				case "OFF":
-					cmd = e.Off
+					op = EntityOpOff
 				default:
 					log.Printf("entities: invalid switch payload for %s: %q", name, value)
 					return
 				}
-				if err := runShell(cmd, shell, dryRun); err != nil {
+				if _, err := executor.Execute(name, op, nil); err != nil {
 					log.Printf("entities: set failed for %s: %v", name, err)
 					return
 				}
-				state, err := runGet(e.Get, shell, dryRun)
+				state, err := executor.Execute(name, EntityOpGet, nil)
 				if err != nil {
 					log.Printf("entities: get failed after set for %s: %v", name, err)
 					return
@@ -114,35 +111,10 @@ func SubscribeEntities(client mqtt.Client, cfg *Config, shell string, dryRun boo
 	return nil
 }
 
-func runGet(cmd string, shell string, dryRun bool) (string, error) {
-	if dryRun {
-		return "", nil
-	}
-	var out bytes.Buffer
-	parts := strings.Fields(shell)
-	parts = append(parts, "-c", cmd)
-	c := exec.Command(parts[0], parts[1:]...)
-	c.Stdout = &out
-	c.Stderr = &out
-	if err := c.Run(); err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(out.String()), nil
-}
-
 func normalizeBool(s string) string {
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "1", "true", "yes", "on":
 		return "ON"
 	}
 	return "OFF"
-}
-
-func runShell(cmd string, shell string, dryRun bool) error {
-	if dryRun {
-		return nil
-	}
-	parts := strings.Fields(shell)
-	parts = append(parts, "-c", cmd)
-	return exec.Command(parts[0], parts[1:]...).Run()
 }
