@@ -2,7 +2,7 @@ name: Ansible Test
 on:
   pull_request:
     branches:
-      - master
+      - main
     paths:
       - 'deploy/ansible/**'
       - '.github/workflows/ansible-test.yaml'
