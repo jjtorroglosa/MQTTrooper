@@ -127,7 +127,7 @@ func TestMqttSubscriptionsReceiveCommands(test *testing.T) {
 		received <- string(service)
 		return err
 	})
-	subscriber := Connect(fmt.Sprintf("%s:%s", host, port), "subs", "subs", "subs", cfg.Mqtt.Topic, executor)
+	subscriber := Connect(fmt.Sprintf("%s:%s", host, port), "subs", "subs", "subs", cfg.Mqtt.Topic, executor, nil)
 	assert.True(t, subscriber.IsConnected())
 	defer subscriber.Disconnect(250)
 
@@ -137,6 +137,7 @@ func TestMqttSubscriptionsReceiveCommands(test *testing.T) {
 		"pub",
 		"pub",
 		cfg.Mqtt.Topic,
+		nil,
 		nil,
 	)
 	defer publisher.Disconnect(250)
@@ -181,7 +182,7 @@ func TestWhenBrokerIsRestartedClientReconnects(test *testing.T) {
 		received <- string(service)
 		return err
 	})
-	subscriber := Connect(fmt.Sprintf("%s:%s", host, port), "subs", "subs", "subs", cfg.Mqtt.Topic, executor)
+	subscriber := Connect(fmt.Sprintf("%s:%s", host, port), "subs", "subs", "subs", cfg.Mqtt.Topic, executor, nil)
 	assert.True(t, subscriber.IsConnectionOpen())
 	defer subscriber.Disconnect(250)
 
@@ -194,6 +195,7 @@ func TestWhenBrokerIsRestartedClientReconnects(test *testing.T) {
 		"pub",
 		"pub",
 		cfg.Mqtt.Topic,
+		nil,
 		nil,
 	)
 	defer publisher.Disconnect(250)
@@ -211,6 +213,49 @@ func TestWhenBrokerIsRestartedClientReconnects(test *testing.T) {
 	bytes, err := os.ReadFile(filename)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedString, string(bytes))
+}
+
+func TestDiscoveryIsRepublishedAfterBrokerReconnect(t *testing.T) {
+	oldScanWindow := discoveryScanWindow
+	discoveryScanWindow = 0
+	defer func() { discoveryScanWindow = oldScanWindow }()
+
+	cfg := &Config{
+		Mqtt: MqttConfig{
+			Enabled: true,
+			Topic:   "/mqttrooper/test",
+			Discovery: DiscoveryConfig{
+				Enabled:      true,
+				Prefix:       "homeassistant",
+				DevicePrefix: "mqttrooper_reconnect",
+				DeviceName:   "mqttrooper reconnect",
+			},
+		},
+		Entities: map[string]EntityConfig{
+			"alpha": {Type: EntityTypeCommand, Run: "echo alpha"},
+		},
+		Services: ServicesMap{},
+	}
+
+	broker := newFakeBroker()
+	client := newFakeClient(broker)
+	handler := buildOnConnectHandler("", nil, func(c mqtt.Client) error {
+		return PublishDiscovery(c, cfg)
+	})
+
+	handler(client)
+	topic := "homeassistant/button/mqttrooper_reconnect/alpha/config"
+	first, ok := broker.retained[topic]
+	assert.True(t, ok, "expected discovery to be retained after initial connect")
+	assert.NotEmpty(t, first)
+
+	// Simulate a broker restart by clearing retained state and reconnecting.
+	broker.retained = map[string][]byte{}
+	handler(client)
+
+	second, ok := broker.retained[topic]
+	assert.True(t, ok, "expected discovery to be republished after reconnect")
+	assert.Equal(t, first, second)
 }
 
 func restartContainer(t *mqttTest, subscriber mqtt.Client) {

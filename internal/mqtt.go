@@ -12,7 +12,7 @@ const qos = 0
 const cleansess = false
 
 // Connects to the MQTT broker.
-func Connect(address string, clientId string, user string, password string, topic string, execute Executor) mqtt.Client {
+func Connect(address string, clientId string, user string, password string, topic string, execute Executor, onConnect func(mqtt.Client) error) mqtt.Client {
 	mqtt.ERROR = log.New(os.Stdout, "[ERROR] ", 0)
 	mqtt.CRITICAL = log.New(os.Stdout, "[CRIT] ", 0)
 	mqtt.WARN = log.New(os.Stdout, "[WARN]  ", 0)
@@ -29,11 +29,8 @@ func Connect(address string, clientId string, user string, password string, topi
 	opts.SetConnectRetryInterval(5 * time.Second)
 	opts.KeepAlive = 10
 
-	if execute != nil {
-		opts.SetOnConnectHandler(func(c mqtt.Client) {
-			log.Println("Connected to broker.")
-			subscribe(c, topic, execute)
-		})
+	if execute != nil || onConnect != nil {
+		opts.SetOnConnectHandler(buildOnConnectHandler(topic, execute, onConnect))
 
 		opts.SetConnectionLostHandler(func(c mqtt.Client, err error) {
 			log.Println("Connection lost:", err)
@@ -61,7 +58,22 @@ func Connect(address string, clientId string, user string, password string, topi
 	return client
 }
 
-// Publishes a message to the MQTT broker.
+// buildOnConnectHandler wires the MQTT OnConnect callback to resubscribe and
+// run any extra post-connect work.
+func buildOnConnectHandler(topic string, execute Executor, onConnect func(mqtt.Client) error) func(mqtt.Client) {
+	return func(c mqtt.Client) {
+		log.Println("Connected to broker.")
+		if execute != nil {
+			subscribe(c, topic, execute)
+		}
+		if onConnect != nil {
+			if err := onConnect(c); err != nil {
+				log.Printf("OnConnect hook error: %v", err)
+			}
+		}
+	}
+}
+
 func Publish(client mqtt.Client, payload string, topic string) {
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())

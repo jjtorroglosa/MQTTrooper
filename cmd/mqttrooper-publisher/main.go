@@ -28,7 +28,7 @@ func main() {
 	}
 
 	cfg.Mqtt.ClientID = *clientID
-	client = internal.Connect(cfg.Mqtt.Address, cfg.Mqtt.ClientID, cfg.Mqtt.User, cfg.Mqtt.Pass, cfg.Mqtt.Topic, nil)
+	client = internal.Connect(cfg.Mqtt.Address, cfg.Mqtt.ClientID, cfg.Mqtt.User, cfg.Mqtt.Pass, cfg.Mqtt.Topic, nil, nil)
 
 	if *payload == "" {
 		log.Fatalln("Empty payload. You need to provide a valid payload to publish")

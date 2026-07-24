@@ -63,18 +63,15 @@ func serve(cfg *internal.Config) {
 
 	var client mqtt.Client
 	if cfg.Mqtt.Enabled {
-		client = internal.Connect(cfg.Mqtt.Address, cfg.Mqtt.ClientID, cfg.Mqtt.User, cfg.Mqtt.Pass, cfg.Mqtt.Topic, execute)
-		if cfg.Mqtt.Discovery.Enabled {
-			if err := internal.PublishDiscovery(client, cfg); err != nil {
-				log.Printf("Discovery publish error: %v", err)
+		onConnect := func(c mqtt.Client) error {
+			if cfg.Mqtt.Discovery.Enabled {
+				if err := internal.PublishDiscovery(c, cfg); err != nil {
+					return err
+				}
 			}
+			return internal.PublishEntityStates(c, cfg, entityExecute)
 		}
-		if err := internal.PublishEntityStates(client, cfg, entityExecute); err != nil {
-			log.Printf("Entity state publish error: %v", err)
-		}
-		if err := internal.SubscribeEntities(client, cfg, entityExecute); err != nil {
-			log.Printf("Entity subscribe error: %v", err)
-		}
+		client = internal.Connect(cfg.Mqtt.Address, cfg.Mqtt.ClientID, cfg.Mqtt.User, cfg.Mqtt.Pass, cfg.Mqtt.Topic, execute, onConnect)
 	} else if cfg.Mqtt.Discovery.Enabled {
 		log.Println("mqtt.discovery.enabled=true but mqtt.enabled=false; skipping discovery")
 	}
